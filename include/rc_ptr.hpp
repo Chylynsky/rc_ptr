@@ -355,12 +355,14 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief Returns the deleter.
+         * @brief Returns the deleter. Undefined behaviour when nullptr or
+         * use_count() == 0.
          *
          * @return const deleter_type&
          */
         const deleter_type& get_deleter() const noexcept
         {
+            assert(get());
             return m_control_block->get_deleter();
         }
 
