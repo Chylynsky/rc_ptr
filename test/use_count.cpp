@@ -1,0 +1,52 @@
+#include "catch2/catch.hpp"
+
+#include "rc_ptr.hpp"
+
+TEST_CASE("use_count, default construction", "[rc_ptr]")
+{
+    using namespace memory;
+
+    rc_ptr<int> first;
+    REQUIRE(first.use_count() == 0);
+}
+
+TEST_CASE("use_count, nullptr construction", "[rc_ptr]")
+{
+    memory::rc_ptr<int> first{ nullptr };
+    REQUIRE(first.use_count() == 0);
+}
+
+TEST_CASE("use_count, pointer construction", "[rc_ptr]")
+{
+    using namespace memory;
+
+    rc_ptr<int> first(new int{ 0 });
+    REQUIRE(first.use_count() == 1);
+}
+
+TEST_CASE("use_count, two copies", "[rc_ptr]")
+{
+    using namespace memory;
+
+    memory::rc_ptr<int> first(new int{ 0 });
+    memory::rc_ptr<int> second = first;
+    REQUIRE(first.use_count() == 2);
+    REQUIRE(second.use_count() == 2);
+}
+
+TEST_CASE("use_count, after scope", "[rc_ptr]")
+{
+    memory::rc_ptr<int> first(new int{ 0 });
+    {
+        memory::rc_ptr<int> second = first;
+    }
+    REQUIRE(first.use_count() == 1);
+}
+
+TEST_CASE("use_count, after move", "[rc_ptr]")
+{
+    memory::rc_ptr<int> first(new int{ 0 });
+    memory::rc_ptr<int> second = std::move(first);
+    REQUIRE(first.use_count() == 0);
+    REQUIRE(second.use_count() == 1);
+}
