@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
+#include <string_view>
 
 #ifndef RC_PTR_NAMESPACE
 #define RC_PTR_NAMESPACE memory
@@ -16,6 +17,8 @@ namespace RC_PTR_NAMESPACE
     {
         template<bool Cond>
         using Requires = std::enable_if_t<Cond, int>;
+
+        inline constexpr const char* BAD_WEAK_RC_PTR_MESSAGE{ "rc_ptr expired." };
 
         template<typename T>
         struct default_delete {
@@ -76,22 +79,38 @@ namespace RC_PTR_NAMESPACE
     }
 
     /**
+     * @brief Exception thrown when lock() method is called on expired
+     * weak_rc_ptr.
+     *
+     */
+    struct bad_weak_rc_ptr : public std::runtime_error {
+        using base = std::runtime_error;
+        bad_weak_rc_ptr(std::string msg) : base{ msg } { }
+    };
+
+    template<typename T, typename Deleter = detail::default_delete<T>>
+    class weak_rc_ptr;
+
+    template<typename T>
+    class enable_rc_ptr_from_this;
+
+    /**
      * @brief rc_ptr is a smart pointer that manages shared ownership of a
      * pointer on a single thread. Multiple rc_ptr objects can own the same
      * object. Reference cycles are possible and may be broken by using
-     * weak_rc_ptr. Owned object is deallocated when the last remaining rc_ptr
-     * object is destroyed, reset or assigned to another rc_ptr, owning other
-     * object.
+     * weak_rc_ptr. Owned object is deallocated when the last remaining
+     * rc_ptr object is destroyed, reset or assigned to another rc_ptr,
+     * owning other object.
      *
      * Custom deleter may be supplied. By default, the object is deallocated
-     * using delete expression when T is a non-array type and delete[] when T is
-     * an array type.
+     * using delete expression when T is a non-array type and delete[] when
+     * T is an array type.
      *
      * Using non-const member functions of rc_ptr is
      * not thread-safe due to lack of synchronization in memory access.
      *
-     * Copy and move assignments is not thread-safe because reference counting
-     * and memory allocation is not synchronized.
+     * Copy and move assignments is not thread-safe because reference
+     * counting and memory allocation is not synchronized.
      *
      * @tparam T Type of the object being managed.
      * @tparam Deleter Type of a deleter. By default, delete is used with
@@ -149,6 +168,12 @@ namespace RC_PTR_NAMESPACE
             m_control_block = new control_block_type{};
             assert(m_control_block);
             m_control_block->get_ref_count()++;
+
+            if constexpr (std::is_base_of_v<enable_rc_ptr_from_this<T>, T>)
+            {
+                static_assert(std::is_same_v<Del, detail::default_delete<T>>, "Custom deleters are not supported for enable_rc_ptr_from_this derived classes.");
+                ptr->m_weak = weak_rc_ptr<T>(*this);
+            }
         }
 
         /**
@@ -458,17 +483,255 @@ namespace RC_PTR_NAMESPACE
     private:
         using control_block_type = detail::control_block<T, deleter_type>;
 
+        friend class weak_rc_ptr<T, Deleter>;
+
+        rc_ptr(pointer ptr, control_block_type control_block) :
+            m_ptr{ ptr },
+            m_control_block{ control_block }
+        {
+            m_control_block->get_ref_count()++;
+        }
+
         pointer m_ptr;
         control_block_type* m_control_block;
     };
 
-    template<typename T>
+    /**
+     * @brief
+     *
+     * @tparam T
+     * @tparam Deleter
+     */
+    template<typename T, typename Deleter>
     class weak_rc_ptr
     {
     public:
+        using element_type = std::remove_extent_t<T>;
+        using pointer      = element_type*;
+        using reference    = element_type&;
+        using deleter_type = Deleter;
+
+        /**
+         * @brief Constructs an empty weak_rc_ptr object.
+         *
+         */
+        constexpr weak_rc_ptr() : m_ptr{ pointer() }, m_control_block{ nullptr }
+        {
+        }
+
+        /**
+         * @brief Construct a new weak rc ptr object
+         *
+         * @param other
+         */
+        weak_rc_ptr(const weak_rc_ptr& other) :
+            m_ptr{ pointer() },
+            m_control_block{ nullptr }
+        {
+            *this = other;
+        }
+
+        /**
+         * @brief Construct a new weak rc ptr object
+         *
+         * @param other
+         */
+        weak_rc_ptr(weak_rc_ptr&& other) :
+            m_ptr{ pointer() },
+            m_control_block{ nullptr }
+        {
+            *this = std::move(other);
+        }
+
+        /**
+         * @brief Construct a new weak rc ptr object
+         *
+         * @param other
+         */
+        weak_rc_ptr(const rc_ptr<T, Deleter>& other) :
+            m_ptr{ pointer() },
+            m_control_block{ nullptr }
+        {
+            if (!other.m_ptr)
+            {
+                return;
+            }
+
+            assert(other.m_control_block);
+            m_ptr           = other.get();
+            m_control_block = other.m_control_block;
+            m_control_block->get_weak_count()++;
+        }
+
+        /**
+         * @brief Destroy the weak rc ptr object
+         *
+         */
+        ~weak_rc_ptr()
+        {
+            if (!m_control_block)
+            {
+                assert(!m_ptr);
+                return;
+            }
+
+            if (m_control_block->get_ref_count() != 0)
+            {
+                return;
+            }
+
+            if (m_control_block->get_weak_count() != 0)
+            {
+                return;
+            }
+
+            delete m_control_block;
+            m_control_block = nullptr;
+        }
+
+        /**
+         * @brief
+         *
+         * @param other
+         * @return weak_rc_ptr&
+         */
+        weak_rc_ptr& operator=(const weak_rc_ptr& other)
+        {
+            if (other.m_control_block)
+            {
+                return *this;
+            }
+
+            m_ptr           = other.get();
+            m_control_block = other.m_control_block;
+            m_control_block->get_weak_count()++;
+            return *this;
+        }
+
+        /**
+         * @brief
+         *
+         * @param other
+         * @return weak_rc_ptr&
+         */
+        weak_rc_ptr& operator=(weak_rc_ptr&& other)
+        {
+            if (this == &other)
+            {
+                return *this;
+            }
+
+            m_ptr                 = other.get();
+            other.m_ptr           = pointer();
+            m_control_block       = other.m_control_block;
+            other.m_control_block = nullptr;
+            return *this;
+        }
+
+        /**
+         * @brief
+         *
+         * @return true
+         * @return false
+         */
+        bool expired() const noexcept
+        {
+            return (!m_control_block || m_control_block->get_ref_count() == 0);
+        }
+
+        /**
+         * @brief
+         *
+         * @return rc_ptr<T, deleter_type>
+         */
+        rc_ptr<T, deleter_type> lock()
+        {
+            if (expired())
+            {
+                throw bad_weak_rc_ptr(detail::BAD_WEAK_RC_PTR_MESSAGE);
+            }
+
+            assert(m_ptr);
+            assert(m_control_block);
+            return rc_ptr<T, deleter_type>{ m_ptr, m_control_block };
+        }
+
     private:
+        using control_block_type = detail::control_block<T, deleter_type>;
+
+        pointer m_ptr;
+        control_block_type* m_control_block;
     };
 
+    /**
+     * @brief Class enabling rc_ptr and weak_rc_ptr creation from this.
+     *
+     * @tparam T
+     */
+    template<typename T>
+    class enable_rc_ptr_from_this
+    {
+        static_assert(std::is_base_of_v<enable_rc_ptr_from_this<T>, T>, "enable_rc_ptr_from_this is not a base for the supplied type.");
+
+    protected:
+        constexpr enable_rc_ptr_from_this() noexcept = default;
+
+        enable_rc_ptr_from_this(const enable_rc_ptr_from_this&) = default;
+
+        enable_rc_ptr_from_this(enable_rc_ptr_from_this&&) = default;
+
+        ~enable_rc_ptr_from_this() = default;
+
+        enable_rc_ptr_from_this& operator=(const enable_rc_ptr_from_this&) = default;
+
+        enable_rc_ptr_from_this& operator=(enable_rc_ptr_from_this&&) = default;
+
+    public:
+        /**
+         * @brief
+         *
+         * @return rc_ptr<T>
+         */
+        rc_ptr<T> rc_from_this()
+        {
+            return m_weak.lock();
+        }
+
+        /**
+         * @brief
+         *
+         * @return rc_ptr<const T>
+         */
+        rc_ptr<const T> rc_from_this() const
+        {
+            return m_weak.lock();
+        }
+
+        /**
+         * @brief
+         *
+         * @return weak_rc_ptr<T>
+         */
+        weak_rc_ptr<T> weak_rc_from_this()
+        {
+            return m_weak;
+        }
+
+        /**
+         * @brief
+         *
+         * @return weak_rc_ptr<const T>
+         */
+        weak_rc_ptr<const T> weak_rc_from_this() const
+        {
+            return m_weak;
+        }
+
+    private:
+        friend class rc_ptr<T>;
+
+        mutable weak_rc_ptr<T> m_weak;
+    };
 }
 
 #endif
