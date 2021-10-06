@@ -639,6 +639,11 @@ namespace RC_PTR_NAMESPACE
             return (!m_control_block || m_control_block->get_ref_count() == 0);
         }
 
+        std::size_t use_count() const noexcept
+        {
+            return (!m_control_block) ? 0 : m_control_block->get_ref_count();
+        }
+
         /**
          * @brief
          *
