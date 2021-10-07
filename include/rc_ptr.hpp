@@ -12,7 +12,6 @@
 #include <cstdint>
 #include <memory>
 #include <stdexcept>
-#include <string_view>
 
 #ifndef RC_PTR_NAMESPACE
 #define RC_PTR_NAMESPACE memory
@@ -113,10 +112,10 @@ namespace RC_PTR_NAMESPACE
      * using delete expression when T is a non-array type and delete[] when
      * T is an array type.
      *
-     * Using non-const member functions of rc_ptr is
+     * Using member functions of rc_ptr is
      * not thread-safe due to lack of synchronization in memory access.
      *
-     * Copy and move assignments is not thread-safe because reference
+     * Copy and move assignments are also not thread-safe because reference
      * counting and memory allocation is not synchronized.
      *
      * @tparam T Type of the object being managed.
@@ -127,7 +126,7 @@ namespace RC_PTR_NAMESPACE
     class rc_ptr
     {
     public:
-        using element_type = std::remove_extent_t<T>;
+        using element_type = T;
         using pointer      = element_type*;
         using reference    = element_type&;
         using deleter_type = Deleter;
@@ -504,7 +503,23 @@ namespace RC_PTR_NAMESPACE
     };
 
     /**
-     * @brief
+     * @brief weak_rc_ptr is a smart pointer that represents a weak (non-owning)
+     * reference to the resource.
+     *
+     * rc_ptr object can be constructed from weak_rc_ptr object by using the
+     * lock() method. Locking on expired (use_count() == 0) weak_rc_ptr results
+     * in bad_weak_rc_ptr exception being thrown.
+     *
+     * Custom deleter may be supplied when needed to
+     * provide rc_ptr type compatibility. This class never deallocates the
+     * managed object, thus the supplied deleter (either custom or default) is
+     * never called by weak_rc_ptr objects.
+     *
+     * Using member functions of weak_rc_ptr is
+     * not thread-safe due to lack of synchronization in memory access.
+     *
+     * Copy and move assignments are also not thread-safe because reference
+     * counting and memory allocation is not synchronized.
      *
      * @tparam T
      * @tparam Deleter
@@ -513,7 +528,7 @@ namespace RC_PTR_NAMESPACE
     class weak_rc_ptr
     {
     public:
-        using element_type = std::remove_extent_t<T>;
+        using element_type = T;
         using pointer      = element_type*;
         using reference    = element_type&;
         using deleter_type = Deleter;
