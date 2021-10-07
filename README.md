@@ -2,6 +2,8 @@
 
 Implementation of reference counted smart pointer for single threaded enviroments.
 
+[![build-master](https://github.com/Chylynsky/rc_ptr/actions/workflows/build-master.yml/badge.svg)](https://github.com/Chylynsky/rc_ptr/actions/workflows/build-master.yml) [![test-master](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-master.yml/badge.svg)](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-master.yml) [![build-dev](https://github.com/Chylynsky/rc_ptr/actions/workflows/build-dev.yml/badge.svg)](https://github.com/Chylynsky/rc_ptr/actions/workflows/build-dev.yml) [![test-dev](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-dev.yml/badge.svg)](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-dev.yml)
+
 ## Description
 
 Work in progress.
