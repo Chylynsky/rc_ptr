@@ -23,8 +23,21 @@ set(REQUIRED_LIBS
     Catch2::Catch2
     rc_ptr)
 
-file(GLOB TEST_SRCS "unique.cpp" "test_main.cpp" "swap.cpp" "reset.cpp" "get.cpp" "get_deleter.cpp" "deleter.cpp" "constructor.cpp" "*.cpp")
+set(TEST_SRCS
+    "assignment.cpp"
+    "constructor.cpp"
+    "deleter.cpp"
+    "get_deleter.cpp"
+    "get.cpp"
+    "operators.cpp"
+    "reset.cpp"
+    "swap.cpp"
+    "test_main.cpp"
+    "unique.cpp"
+    "use_count.cpp")
 
 add_executable(${TARGET} ${TEST_SRCS})
 
 target_link_libraries(${TARGET} PRIVATE ${REQUIRED_LIBS})
+
+add_test(NAME ${TARGET} COMMAND ${TARGET})
