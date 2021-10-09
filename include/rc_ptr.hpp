@@ -431,7 +431,7 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief Release ownerhip over resurce.
+         * @brief Release ownerhip over managed object.
          *
          */
         void reset() noexcept
@@ -534,7 +534,7 @@ namespace RC_PTR_NAMESPACE
         using deleter_type = Deleter;
 
         /**
-         * @brief Constructs an empty weak_rc_ptr object.
+         * @brief Default constructor. Constructs an empty weak_rc_ptr object.
          *
          */
         constexpr weak_rc_ptr() : m_ptr{ pointer() }, m_control_block{ nullptr }
@@ -542,7 +542,8 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief Construct a new weak rc ptr object
+         * @brief Copy constructor. Constructs a copy of weak_rc_ptr. If other
+         * is valid, increases weak count.
          *
          * @param other
          */
@@ -554,7 +555,8 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief Construct a new weak rc ptr object
+         * @brief Move constructor. Transfers control block ownership. Does not
+         * increase weak count.
          *
          * @param other
          */
@@ -566,7 +568,8 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief Construct a new weak rc ptr object
+         * @brief Constructs a weak_rc_ptr object out of rc_ptr. Increases weak
+         * count if other owns a pointer.
          *
          * @param other
          */
@@ -586,7 +589,8 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief Destroy the weak rc ptr object
+         * @brief Destroys weak_rc_ptr. If weak count reaches zero destroys the
+         * control block.
          *
          */
         ~weak_rc_ptr()
@@ -612,15 +616,17 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief
+         * @brief Copy assignment. Creates a copy of weak_rc_ptr. If other
+         * is valid, increases weak count.
          *
          * @param other
          * @return weak_rc_ptr&
          */
         weak_rc_ptr& operator=(const weak_rc_ptr& other)
         {
-            if (other.m_control_block)
+            if (!other.m_control_block)
             {
+                assert(!other.m_ptr);
                 return *this;
             }
 
@@ -631,7 +637,7 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief
+         * @brief Move assignment. Does not increase a weak count.
          *
          * @param other
          * @return weak_rc_ptr&
@@ -651,7 +657,8 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief
+         * @brief Checks if the managed object has expired. Managed object
+         * expires when its reference count reaches zero.
          *
          * @return true
          * @return false
@@ -661,15 +668,22 @@ namespace RC_PTR_NAMESPACE
             return (!m_control_block || m_control_block->get_ref_count() == 0);
         }
 
+        /**
+         * @brief Returns the current number of rc_ptr objects owning the
+         * resource.
+         *
+         * @return std::size_t
+         */
         std::size_t use_count() const noexcept
         {
             return (!m_control_block) ? 0 : m_control_block->get_ref_count();
         }
 
         /**
-         * @brief
+         * @brief Creates a new rc_ptr object if expired() == false.
          *
          * @return rc_ptr<T, deleter_type>
+         * @throws bad_weak_rc_ptr when calling on an expired weak_rc_ptr.
          */
         rc_ptr<T, deleter_type> lock()
         {
@@ -715,7 +729,7 @@ namespace RC_PTR_NAMESPACE
 
     public:
         /**
-         * @brief
+         * @brief Creates a new rc_ptr object from this.
          *
          * @return rc_ptr<T>
          */
@@ -725,7 +739,7 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief
+         * @brief Creates a new rc_ptr object from this.
          *
          * @return rc_ptr<const T>
          */
@@ -735,7 +749,7 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief
+         * @brief Creates a new weak_rc_ptr object from this.
          *
          * @return weak_rc_ptr<T>
          */
@@ -745,7 +759,7 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief
+         * @brief Creates a new weak_rc_ptr object from this.
          *
          * @return weak_rc_ptr<const T>
          */
