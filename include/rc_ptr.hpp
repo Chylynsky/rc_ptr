@@ -29,7 +29,7 @@ namespace RC_PTR_NAMESPACE
 
         template<typename T>
         struct default_delete {
-            void operator()(std::remove_extent_t<T>* ptr)
+            void operator()(std::remove_extent_t<T>* ptr) const noexcept
             {
                 if constexpr (std::is_array_v<T>)
                 {
@@ -132,9 +132,6 @@ namespace RC_PTR_NAMESPACE
         using reference    = element_type&;
         using deleter_type = Deleter;
 
-        template<bool Cond>
-        using _Requires = detail::Requires<Cond>;
-
         /**
          * @brief Constructs rc_ptr that owns nothing.
          *
@@ -162,7 +159,7 @@ namespace RC_PTR_NAMESPACE
          *
          * @param ptr
          */
-        template<typename Del = deleter_type, typename = _Requires<std::is_nothrow_default_constructible_v<Del> && !std::is_pointer_v<Del>>>
+        template<typename Del = deleter_type, typename = detail::Requires<std::is_nothrow_default_constructible_v<Del> && !std::is_pointer_v<Del>>>
         explicit rc_ptr(pointer ptr) noexcept :
             m_ptr{ ptr },
             m_control_block{ nullptr }
@@ -191,7 +188,7 @@ namespace RC_PTR_NAMESPACE
          * @param ptr
          * @param deleter
          */
-        template<typename Del = deleter_type, typename = _Requires<std::is_nothrow_copy_constructible_v<Del>>>
+        template<typename Del = deleter_type, typename = detail::Requires<std::is_nothrow_copy_constructible_v<Del>>>
         rc_ptr(pointer ptr, const deleter_type& deleter) noexcept :
             m_ptr{ ptr },
             m_control_block{ nullptr }
@@ -217,7 +214,7 @@ namespace RC_PTR_NAMESPACE
          * @param ptr
          * @param deleter
          */
-        template<typename Del = deleter_type, typename = _Requires<!std::is_lvalue_reference_v<Del> && std::is_nothrow_move_constructible_v<Del>>>
+        template<typename Del = deleter_type, typename = detail::Requires<!std::is_lvalue_reference_v<Del> && std::is_nothrow_move_constructible_v<Del>>>
         rc_ptr(pointer ptr, Del&& deleter) noexcept :
             m_ptr{ ptr },
             m_control_block{ nullptr }
@@ -244,7 +241,7 @@ namespace RC_PTR_NAMESPACE
          * @param ptr
          * @param deleter
          */
-        template<typename Del = deleter_type, typename = _Requires<std::is_lvalue_reference_v<Del>>>
+        template<typename Del = deleter_type, typename = detail::Requires<std::is_lvalue_reference_v<Del>>>
         rc_ptr(pointer ptr, Del& deleter) noexcept :
             m_ptr{ ptr },
             m_control_block{ nullptr }
@@ -259,7 +256,7 @@ namespace RC_PTR_NAMESPACE
             m_control_block->get_ref_count()++;
         }
 
-        template<typename Del = deleter_type, typename = _Requires<std::is_lvalue_reference_v<Del>>>
+        template<typename Del = deleter_type, typename = detail::Requires<std::is_lvalue_reference_v<Del>>>
         rc_ptr(pointer ptr, std::remove_reference_t<Del>&& deleter) = delete;
 
         /**
@@ -285,6 +282,19 @@ namespace RC_PTR_NAMESPACE
             m_control_block{ nullptr }
         {
             *this = std::move(other);
+        }
+
+        /**
+         * @brief Constructs rc_ptr from weak_rc_ptr.
+         *
+         * @param other
+         * @throws bad_weak_rc_ptr when other.expired() == true
+         */
+        rc_ptr(const weak_rc_ptr<T, deleter_type>& other) noexcept :
+            m_ptr{ pointer() },
+            m_control_block{ nullptr }
+        {
+            *this = other.lock();
         }
 
         /**
@@ -482,10 +492,12 @@ namespace RC_PTR_NAMESPACE
 
         friend class weak_rc_ptr<T, Deleter>;
 
-        rc_ptr(pointer ptr, control_block_type control_block) :
+        rc_ptr(pointer ptr, control_block_type* control_block) :
             m_ptr{ ptr },
             m_control_block{ control_block }
         {
+            assert(m_ptr);
+            assert(m_control_block);
             m_control_block->get_ref_count()++;
         }
 
@@ -592,6 +604,8 @@ namespace RC_PTR_NAMESPACE
                 return;
             }
 
+            m_control_block->get_weak_count()--;
+
             if (m_control_block->get_ref_count() != 0)
             {
                 return;
@@ -621,7 +635,7 @@ namespace RC_PTR_NAMESPACE
                 return *this;
             }
 
-            m_ptr           = other.get();
+            m_ptr           = other.m_ptr;
             m_control_block = other.m_control_block;
             m_control_block->get_weak_count()++;
             return *this;
@@ -640,7 +654,7 @@ namespace RC_PTR_NAMESPACE
                 return *this;
             }
 
-            m_ptr                 = other.get();
+            m_ptr                 = other.m_ptr;
             other.m_ptr           = pointer();
             m_control_block       = other.m_control_block;
             other.m_control_block = nullptr;
@@ -676,7 +690,7 @@ namespace RC_PTR_NAMESPACE
          * @return rc_ptr<T, deleter_type>
          * @throws bad_weak_rc_ptr when calling on an expired weak_rc_ptr.
          */
-        rc_ptr<T, deleter_type> lock()
+        rc_ptr<T, deleter_type> lock() const
         {
             if (expired())
             {
