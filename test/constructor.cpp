@@ -59,6 +59,15 @@ TEST_CASE("constructor, pointer with deleter", "[rc_ptr]")
     REQUIRE(ptr.unique());
 }
 
+TEST_CASE("constructor, array", "[rc_ptr]")
+{
+    auto raw = new int[256];
+    memory::rc_ptr<int[]> ptr{ raw };
+    REQUIRE(ptr.get() == raw);
+    REQUIRE(ptr.use_count() == 1);
+    REQUIRE(ptr.unique());
+}
+
 TEST_CASE("constructor, copy", "[rc_ptr]")
 {
     auto raw = new int{ 0 };
