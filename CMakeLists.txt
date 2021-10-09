@@ -14,11 +14,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(TARGET rc_ptr)
 
+option(RC_PTR_BUILD_TESTS "Build tests for rc_ptr." OFF)
+
 add_library(${TARGET} INTERFACE)
 
 target_include_directories(${TARGET} INTERFACE include)
 
-if (BUILD_TESTING)
+if (RC_PTR_BUILD_TESTS)
     include(CTest)
     add_subdirectory(test rc_ptr-test)
     enable_testing()
