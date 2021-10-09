@@ -9,7 +9,7 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("swap, two nullptrs", "[rc_ptr]")
+TEST_CASE("rc_ptr, swap two nullptrs", "[swap]")
 {
     memory::rc_ptr<int> first{ nullptr };
     memory::rc_ptr<int> second{ nullptr };
@@ -22,7 +22,7 @@ TEST_CASE("swap, two nullptrs", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("swap, nullptr and pointer", "[rc_ptr]")
+TEST_CASE("rc_ptr, swap nullptr and pointer", "[swap]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -36,7 +36,7 @@ TEST_CASE("swap, nullptr and pointer", "[rc_ptr]")
     REQUIRE(second.unique());
 }
 
-TEST_CASE("swap, double swap - nullptr and pointer", "[rc_ptr]")
+TEST_CASE("rc_ptr, double swap - nullptr and pointer", "[swap]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -51,7 +51,7 @@ TEST_CASE("swap, double swap - nullptr and pointer", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("swap, valid pointers", "[rc_ptr]")
+TEST_CASE("rc_ptr, swap valid pointers", "[swap]")
 {
     auto raw_first  = new int{ 0 };
     auto raw_second = new int{ 6 };
@@ -66,7 +66,7 @@ TEST_CASE("swap, valid pointers", "[rc_ptr]")
     REQUIRE(second.unique());
 }
 
-TEST_CASE("swap, double swap - valid pointers", "[rc_ptr]")
+TEST_CASE("rc_ptr, double swap - valid pointers", "[swap]")
 {
     auto raw_first  = new int{ 0 };
     auto raw_second = new int{ 6 };

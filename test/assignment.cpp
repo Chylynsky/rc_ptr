@@ -11,7 +11,7 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("assignment, nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, nullptr assignment", "[assignment]")
 {
     memory::rc_ptr<int> ptr = nullptr;
     REQUIRE(ptr.get() == nullptr);
@@ -19,7 +19,7 @@ TEST_CASE("assignment, nullptr", "[rc_ptr]")
     REQUIRE(!ptr.unique());
 }
 
-TEST_CASE("assignment, copy", "[rc_ptr]")
+TEST_CASE("rc_ptr, copy assignment", "[assignment]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -32,7 +32,7 @@ TEST_CASE("assignment, copy", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("assignment, copy when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, copy assignment when nullptr", "[assignment]")
 {
     memory::rc_ptr<int> first{ nullptr };
     memory::rc_ptr<int> second = first;
@@ -44,7 +44,7 @@ TEST_CASE("assignment, copy when nullptr", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("assignment, move", "[rc_ptr]")
+TEST_CASE("rc_ptr, move assignment", "[assignment]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -57,7 +57,7 @@ TEST_CASE("assignment, move", "[rc_ptr]")
     REQUIRE(second.unique());
 }
 
-TEST_CASE("assignment, move when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, move assignment when nullptr", "[assignment]")
 {
     memory::rc_ptr<int> first{ nullptr };
     memory::rc_ptr<int> second = std::move(first);
@@ -69,7 +69,7 @@ TEST_CASE("assignment, move when nullptr", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("assignment, nullptr with deleter", "[rc_ptr]")
+TEST_CASE("rc_ptr, nullptr assignment with deleter", "[assignment]")
 {
     auto ptr = memory::rc_ptr<int, std::function<void(int*)>>{
         nullptr,
@@ -80,7 +80,7 @@ TEST_CASE("assignment, nullptr with deleter", "[rc_ptr]")
     REQUIRE(!ptr.unique());
 }
 
-TEST_CASE("assignment, pointer with deleter", "[rc_ptr]")
+TEST_CASE("rc_ptr, pointer assignment with deleter", "[assignment]")
 {
     auto raw = new int{ 0 };
     auto ptr = memory::rc_ptr<int, std::function<void(int*)>>{

@@ -11,26 +11,26 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("operators, bool conversion when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, bool conversion when nullptr", "[operators]")
 {
     memory::rc_ptr<int> ptr{ nullptr };
     REQUIRE(!ptr);
 }
 
-TEST_CASE("operators, bool conversion when valid", "[rc_ptr]")
+TEST_CASE("rc_ptr, bool conversion when valid", "[operators]")
 {
     memory::rc_ptr<int> ptr{ new int{ 0 } };
     REQUIRE(ptr);
 }
 
-TEST_CASE("operators, operator*", "[rc_ptr]")
+TEST_CASE("rc_ptr, operator*", "[operators]")
 {
     constexpr int value = 13;
     memory::rc_ptr<int> ptr{ new int{ value } };
     REQUIRE(*ptr == value);
 }
 
-TEST_CASE("operators, operator->", "[rc_ptr]")
+TEST_CASE("rc_ptr, operator->", "[operators]")
 {
     constexpr std::pair<int, int> value{ 26, 34 };
     memory::rc_ptr<std::pair<int, int>> ptr{ new std::pair<int, int>{ value } };

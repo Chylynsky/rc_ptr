@@ -11,7 +11,7 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("constructor, default", "[rc_ptr]")
+TEST_CASE("rc_ptr, default constructor", "[constructor]")
 {
     memory::rc_ptr<int> ptr;
     REQUIRE(ptr.get() == nullptr);
@@ -19,7 +19,7 @@ TEST_CASE("constructor, default", "[rc_ptr]")
     REQUIRE(!ptr.unique());
 }
 
-TEST_CASE("constructor, nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, nullptr constructor", "[constructor]")
 {
     memory::rc_ptr<int> ptr{ nullptr };
     REQUIRE(ptr.get() == nullptr);
@@ -27,7 +27,7 @@ TEST_CASE("constructor, nullptr", "[rc_ptr]")
     REQUIRE(!ptr.unique());
 }
 
-TEST_CASE("constructor, nullptr with deleter", "[rc_ptr]")
+TEST_CASE("rc_ptr, nullptr constructor with deleter", "[constructor]")
 {
     memory::rc_ptr<int, std::function<void(int*)>> ptr{
         nullptr,
@@ -38,7 +38,7 @@ TEST_CASE("constructor, nullptr with deleter", "[rc_ptr]")
     REQUIRE(!ptr.unique());
 }
 
-TEST_CASE("constructor, pointer", "[rc_ptr]")
+TEST_CASE("rc_ptr, pointer constructor", "[constructor]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> ptr{ raw };
@@ -47,7 +47,7 @@ TEST_CASE("constructor, pointer", "[rc_ptr]")
     REQUIRE(ptr.unique());
 }
 
-TEST_CASE("constructor, pointer with deleter", "[rc_ptr]")
+TEST_CASE("rc_ptr, pointer constructor with deleter", "[constructor]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int, std::function<void(int*)>> ptr{
@@ -59,7 +59,7 @@ TEST_CASE("constructor, pointer with deleter", "[rc_ptr]")
     REQUIRE(ptr.unique());
 }
 
-TEST_CASE("constructor, array", "[rc_ptr]")
+TEST_CASE("rc_ptr, array constructor", "[constructor]")
 {
     auto raw = new int[256];
     memory::rc_ptr<int[]> ptr{ raw };
@@ -68,7 +68,7 @@ TEST_CASE("constructor, array", "[rc_ptr]")
     REQUIRE(ptr.unique());
 }
 
-TEST_CASE("constructor, copy", "[rc_ptr]")
+TEST_CASE("rc_ptr, copy constructor", "[constructor]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -81,7 +81,7 @@ TEST_CASE("constructor, copy", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("constructor, copy when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, copy constructor when nullptr", "[constructor]")
 {
     memory::rc_ptr<int> first{ nullptr };
     memory::rc_ptr<int> second{ first };
@@ -93,7 +93,7 @@ TEST_CASE("constructor, copy when nullptr", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("constructor, move", "[rc_ptr]")
+TEST_CASE("rc_ptr, move constructor", "[constructor]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -106,7 +106,7 @@ TEST_CASE("constructor, move", "[rc_ptr]")
     REQUIRE(second.unique());
 }
 
-TEST_CASE("constructor, move when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, move constructor when nullptr", "[constructor]")
 {
     memory::rc_ptr<int> first{ nullptr };
     memory::rc_ptr<int> second{ std::move(first) };
@@ -116,4 +116,77 @@ TEST_CASE("constructor, move when nullptr", "[rc_ptr]")
     REQUIRE(second.get() == nullptr);
     REQUIRE(second.use_count() == 0);
     REQUIRE(!second.unique());
+}
+
+TEST_CASE("weak_rc_ptr, default constructor", "[constructor]")
+{
+    memory::weak_rc_ptr<int> ptr;
+    REQUIRE(ptr.use_count() == 0);
+    REQUIRE(ptr.expired());
+}
+
+TEST_CASE("weak_rc_ptr, nullptr constructor", "[constructor]")
+{
+    memory::weak_rc_ptr<int> ptr{ nullptr };
+    REQUIRE(ptr.use_count() == 0);
+    REQUIRE(ptr.expired());
+}
+
+TEST_CASE("weak_rc_ptr, nullptr constructor with deleter", "[constructor]")
+{
+    memory::weak_rc_ptr<int, std::function<void(int*)>> ptr{
+        nullptr,
+    };
+    REQUIRE(ptr.use_count() == 0);
+    REQUIRE(ptr.expired());
+}
+
+TEST_CASE("weak_rc_ptr, array constructor", "[constructor]")
+{
+    memory::weak_rc_ptr<int[]> ptr{};
+    REQUIRE(ptr.use_count() == 0);
+    REQUIRE(ptr.expired());
+}
+
+TEST_CASE("weak_rc_ptr, copy constructor when nullptr", "[constructor]")
+{
+    memory::weak_rc_ptr<int> first{ nullptr };
+    memory::weak_rc_ptr<int> second{ first };
+    REQUIRE(first.use_count() == 0);
+    REQUIRE(first.expired());
+    REQUIRE(second.use_count() == 0);
+    REQUIRE(second.expired());
+}
+
+TEST_CASE("weak_rc_ptr, move constructor when nullptr", "[constructor]")
+{
+    memory::weak_rc_ptr<int> first{ nullptr };
+    memory::weak_rc_ptr<int> second{ std::move(first) };
+    REQUIRE(first.use_count() == 0);
+    REQUIRE(first.expired());
+    REQUIRE(second.use_count() == 0);
+    REQUIRE(second.expired());
+}
+
+TEST_CASE("mixed, weak_rc_ptr from rc_ptr", "[constructor]")
+{
+    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::weak_rc_ptr<int> second{ first };
+    REQUIRE(first.unique());
+    REQUIRE(first.use_count() == 1);
+    REQUIRE(second.use_count() == 1);
+    REQUIRE(!second.expired());
+}
+
+TEST_CASE("mixed, rc_ptr from weak_rc_ptr", "[constructor]")
+{
+    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::weak_rc_ptr<int> weak{ first };
+    memory::rc_ptr<int> second{ weak };
+    REQUIRE(!first.unique());
+    REQUIRE(first.use_count() == 2);
+    REQUIRE(!second.unique());
+    REQUIRE(second.use_count() == 2);
+    REQUIRE(!weak.expired());
+    REQUIRE(weak.use_count() == 2);
 }

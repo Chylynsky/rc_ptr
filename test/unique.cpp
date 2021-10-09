@@ -9,25 +9,25 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("unique, default construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, unique after default construction", "[unique]")
 {
     memory::rc_ptr<int> first;
     REQUIRE(!first.unique());
 }
 
-TEST_CASE("unique, nullptr construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, unique after nullptr construction", "[unique]")
 {
     memory::rc_ptr<int> first{ nullptr };
     REQUIRE(!first.unique());
 }
 
-TEST_CASE("unique, pointer construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, unique after pointer construction", "[unique]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     REQUIRE(first.unique());
 }
 
-TEST_CASE("unique, two copies", "[rc_ptr]")
+TEST_CASE("rc_ptr, unique after two copies", "[unique]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     memory::rc_ptr<int> second = first;
@@ -35,7 +35,7 @@ TEST_CASE("unique, two copies", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("unique, after scope", "[rc_ptr]")
+TEST_CASE("rc_ptr, unique after scope", "[unique]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     {
@@ -44,7 +44,7 @@ TEST_CASE("unique, after scope", "[rc_ptr]")
     REQUIRE(first.unique());
 }
 
-TEST_CASE("unique, after move", "[rc_ptr]")
+TEST_CASE("rc_ptr, unique after move", "[unique]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     memory::rc_ptr<int> second = std::move(first);

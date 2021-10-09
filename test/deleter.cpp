@@ -33,24 +33,24 @@ struct deleter_move_constructible {
     }
 };
 
-TEST_CASE("deleter, copy constructible", "[rc_ptr]")
+TEST_CASE("rc_ptr, copy constructible", "[deleter]")
 {
     deleter_copy_constructible<int> deleter;
     memory::rc_ptr<int, deleter_copy_constructible<int>> ptr(nullptr, deleter);
 }
 
-TEST_CASE("deleter, move constructible", "[rc_ptr]")
+TEST_CASE("rc_ptr, move constructible", "[deleter]")
 {
     memory::rc_ptr<int, deleter_move_constructible<int>> ptr(nullptr, deleter_move_constructible<int>());
 }
 
-TEST_CASE("deleter, reference type", "[rc_ptr]")
+TEST_CASE("rc_ptr, reference type", "[deleter]")
 {
     deleter_copy_constructible<int> deleter;
     memory::rc_ptr<int, deleter_copy_constructible<int>&> ptr(nullptr, deleter);
 }
 
-TEST_CASE("deleter, not called when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, not called when nullptr", "[deleter]")
 {
     std::size_t times_called = 0;
 
@@ -68,7 +68,7 @@ TEST_CASE("deleter, not called when nullptr", "[rc_ptr]")
     REQUIRE(times_called == 0);
 }
 
-TEST_CASE("deleter, one copy", "[rc_ptr]")
+TEST_CASE("rc_ptr, one copy", "[deleter]")
 {
     using deleter_type = std::function<void(int*)>;
     static_assert(!std::is_lvalue_reference_v<deleter_type>, "Deleter must not be an lvalue reference.");
@@ -84,7 +84,7 @@ TEST_CASE("deleter, one copy", "[rc_ptr]")
     REQUIRE(times_called == 1);
 }
 
-TEST_CASE("deleter, two copies", "[rc_ptr]")
+TEST_CASE("rc_ptr, two copies", "[deleter]")
 {
     using deleter_type = std::function<void(int*)>;
     static_assert(!std::is_lvalue_reference_v<deleter_type>, "Deleter must not be an lvalue reference.");

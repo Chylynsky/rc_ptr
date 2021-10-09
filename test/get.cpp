@@ -11,19 +11,19 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("get, default", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after default construction", "[get]")
 {
     memory::rc_ptr<int> ptr;
     REQUIRE(ptr.get() == nullptr);
 }
 
-TEST_CASE("get, nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after nullptr construction", "[get]")
 {
     memory::rc_ptr<int> ptr{ nullptr };
     REQUIRE(ptr.get() == nullptr);
 }
 
-TEST_CASE("get, nullptr with deleter", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after nullptr construction with deleter", "[get]")
 {
     memory::rc_ptr<int, std::function<void(int*)>> ptr{
         nullptr,
@@ -32,14 +32,14 @@ TEST_CASE("get, nullptr with deleter", "[rc_ptr]")
     REQUIRE(ptr.get() == nullptr);
 }
 
-TEST_CASE("get, pointer", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after pointer construction", "[get]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> ptr{ raw };
     REQUIRE(ptr.get() == raw);
 }
 
-TEST_CASE("get, pointer with deleter", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after pointer construction with deleter", "[get]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int, std::function<void(int*)>> ptr{
@@ -49,7 +49,7 @@ TEST_CASE("get, pointer with deleter", "[rc_ptr]")
     REQUIRE(ptr.get() == raw);
 }
 
-TEST_CASE("get, copy", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after copy construction", "[get]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -58,7 +58,7 @@ TEST_CASE("get, copy", "[rc_ptr]")
     REQUIRE(second.get() == raw);
 }
 
-TEST_CASE("get, copy when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after copy construction when nullptr", "[get]")
 {
     memory::rc_ptr<int> first{ nullptr };
     memory::rc_ptr<int> second{ first };
@@ -66,7 +66,7 @@ TEST_CASE("get, copy when nullptr", "[rc_ptr]")
     REQUIRE(second.get() == nullptr);
 }
 
-TEST_CASE("get, move", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after move construction", "[get]")
 {
     auto raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
@@ -75,7 +75,7 @@ TEST_CASE("get, move", "[rc_ptr]")
     REQUIRE(second.get() == raw);
 }
 
-TEST_CASE("get, move when nullptr", "[rc_ptr]")
+TEST_CASE("rc_ptr, get after move construction when nullptr", "[get]")
 {
     memory::rc_ptr<int> first{ nullptr };
     memory::rc_ptr<int> second{ std::move(first) };

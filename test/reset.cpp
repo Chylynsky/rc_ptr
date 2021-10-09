@@ -9,7 +9,7 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("reset, default construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset after default construction", "[reset]")
 {
     memory::rc_ptr<int> ptr;
     ptr.reset();
@@ -18,7 +18,7 @@ TEST_CASE("reset, default construction", "[rc_ptr]")
     REQUIRE(!ptr.unique());
 }
 
-TEST_CASE("reset, nullptr construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset after nullptr construction", "[reset]")
 {
     memory::rc_ptr<int> ptr{ nullptr };
     ptr.reset();
@@ -27,7 +27,7 @@ TEST_CASE("reset, nullptr construction", "[rc_ptr]")
     REQUIRE(!ptr.unique());
 }
 
-TEST_CASE("reset, copy construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset after copy construction", "[reset]")
 {
     memory::rc_ptr<int> first{ new int{ 0 } };
     memory::rc_ptr<int> second{ first };
@@ -44,7 +44,7 @@ TEST_CASE("reset, copy construction", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("reset, move construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset after move construction", "[reset]")
 {
     memory::rc_ptr<int> first{ new int{ 0 } };
     memory::rc_ptr<int> second{ std::move(first) };
@@ -61,7 +61,7 @@ TEST_CASE("reset, move construction", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("reset, after copy assignment", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset after after copy assignment", "[reset]")
 {
     memory::rc_ptr<int> first{ new int{ 0 } };
     memory::rc_ptr<int> second = first;
@@ -78,7 +78,7 @@ TEST_CASE("reset, after copy assignment", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("reset, after move assignment", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset after after move assignment", "[reset]")
 {
     memory::rc_ptr<int> first{ new int{ 0 } };
     memory::rc_ptr<int> second = std::move(first);
@@ -95,7 +95,7 @@ TEST_CASE("reset, after move assignment", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("reset, after swap", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset after after swap", "[reset]")
 {
     memory::rc_ptr<int> first{ new int{ 0 } };
     memory::rc_ptr<int> second{ new int{ 6 } };
@@ -113,7 +113,7 @@ TEST_CASE("reset, after swap", "[rc_ptr]")
     REQUIRE(!second.unique());
 }
 
-TEST_CASE("reset, custom deleter", "[rc_ptr]")
+TEST_CASE("rc_ptr, reset when constructed with custom deleter", "[reset]")
 {
     auto deleter = [](int* ptr) {
         delete ptr;

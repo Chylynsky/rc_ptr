@@ -9,25 +9,25 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("use_count, default construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, use_count after default construction", "[use_count]")
 {
     memory::rc_ptr<int> first;
     REQUIRE(first.use_count() == 0);
 }
 
-TEST_CASE("use_count, nullptr construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, use_count after nullptr construction", "[use_count]")
 {
     memory::rc_ptr<int> first{ nullptr };
     REQUIRE(first.use_count() == 0);
 }
 
-TEST_CASE("use_count, pointer construction", "[rc_ptr]")
+TEST_CASE("rc_ptr, use_count after pointer construction", "[use_count]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     REQUIRE(first.use_count() == 1);
 }
 
-TEST_CASE("use_count, two copies", "[rc_ptr]")
+TEST_CASE("rc_ptr, use_count after two copies", "[use_count]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     memory::rc_ptr<int> second = first;
@@ -35,7 +35,7 @@ TEST_CASE("use_count, two copies", "[rc_ptr]")
     REQUIRE(second.use_count() == 2);
 }
 
-TEST_CASE("use_count, after scope", "[rc_ptr]")
+TEST_CASE("rc_ptr, use_count after after scope", "[use_count]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     {
@@ -44,7 +44,7 @@ TEST_CASE("use_count, after scope", "[rc_ptr]")
     REQUIRE(first.use_count() == 1);
 }
 
-TEST_CASE("use_count, after move", "[rc_ptr]")
+TEST_CASE("rc_ptr, use_count after after move", "[use_count]")
 {
     memory::rc_ptr<int> first(new int{ 0 });
     memory::rc_ptr<int> second = std::move(first);

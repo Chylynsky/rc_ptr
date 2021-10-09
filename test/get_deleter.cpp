@@ -9,7 +9,7 @@
 
 #include "rc_ptr.hpp"
 
-TEST_CASE("get_deleter, default", "[rc_ptr]")
+TEST_CASE("rc_ptr, get default deleter", "[get_deleter]")
 {
     memory::rc_ptr<int> ptr{ new int{ 0 } };
     auto deleter = ptr.get_deleter();
@@ -17,7 +17,15 @@ TEST_CASE("get_deleter, default", "[rc_ptr]")
     deleter(raw);
 }
 
-TEST_CASE("get_deleter, custom", "[rc_ptr]")
+TEST_CASE("rc_ptr, get default deleter for array", "[get_deleter]")
+{
+    memory::rc_ptr<int[]> ptr{ new int[256] };
+    auto deleter = ptr.get_deleter();
+    auto raw     = new int[256];
+    deleter(raw);
+}
+
+TEST_CASE("rc_ptr, get custom deleter", "[get_deleter]")
 {
     std::size_t times_called = 0;
 
