@@ -8,6 +8,7 @@
 #ifndef RC_PTR_HPP
 #define RC_PTR_HPP
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <memory>
@@ -126,7 +127,7 @@ namespace RC_PTR_NAMESPACE
     class rc_ptr
     {
     public:
-        using element_type = T;
+        using element_type = std::remove_extent_t<T>;
         using pointer      = element_type*;
         using reference    = element_type&;
         using deleter_type = Deleter;
@@ -368,19 +369,9 @@ namespace RC_PTR_NAMESPACE
         /**
          * @brief Returns the stored pointer.
          *
-         * @return const pointer
-         */
-        const pointer get() const noexcept
-        {
-            return m_ptr;
-        }
-
-        /**
-         * @brief Returns the stored pointer.
-         *
          * @return pointer
          */
-        pointer get() noexcept
+        pointer get() const noexcept
         {
             return m_ptr;
         }
@@ -528,7 +519,7 @@ namespace RC_PTR_NAMESPACE
     class weak_rc_ptr
     {
     public:
-        using element_type = T;
+        using element_type = std::remove_extent_t<T>;
         using pointer      = element_type*;
         using reference    = element_type&;
         using deleter_type = Deleter;
@@ -695,6 +686,26 @@ namespace RC_PTR_NAMESPACE
             assert(m_ptr);
             assert(m_control_block);
             return rc_ptr<T, deleter_type>{ m_ptr, m_control_block };
+        }
+
+        /**
+         * @brief Release ownerhip over managed object.
+         *
+         */
+        void reset() noexcept
+        {
+            weak_rc_ptr().swap(*this);
+        }
+
+        /**
+         * @brief Swap contents with other rc_ptr object.
+         *
+         * @param other
+         */
+        void swap(weak_rc_ptr& other) noexcept
+        {
+            std::swap(m_control_block, other.m_control_block);
+            std::swap(m_ptr, other.m_ptr);
         }
 
     private:
