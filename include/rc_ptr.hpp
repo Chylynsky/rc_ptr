@@ -290,7 +290,7 @@ namespace RC_PTR_NAMESPACE
          * @param other
          * @throws bad_weak_rc_ptr when other.expired() == true
          */
-        rc_ptr(const weak_rc_ptr<T, deleter_type>& other) noexcept :
+        rc_ptr(const weak_rc_ptr<T, deleter_type>& other) :
             m_ptr{ pointer() },
             m_control_block{ nullptr }
         {
@@ -335,6 +335,18 @@ namespace RC_PTR_NAMESPACE
             other.m_control_block = nullptr;
             m_ptr                 = other.get();
             other.m_ptr           = pointer();
+            return *this;
+        }
+
+        /**
+         * @brief Assignment of weak_rc_ptr to rc_tr.
+         *
+         * @param other
+         * @throws bad_weak_rc_ptr when other.expired() == true
+         */
+        rc_ptr& operator=(const weak_rc_ptr<T, deleter_type>& other)
+        {
+            *this = other.lock();
             return *this;
         }
 
@@ -658,6 +670,26 @@ namespace RC_PTR_NAMESPACE
             other.m_ptr           = pointer();
             m_control_block       = other.m_control_block;
             other.m_control_block = nullptr;
+            return *this;
+        }
+
+        /**
+         * @brief Assigns rc_ptr to weak_rc_ptr. Inreases weak count when other
+         * is valid.
+         *
+         * @param other
+         */
+        weak_rc_ptr& operator=(const rc_ptr<T, Deleter>& other)
+        {
+            if (!other.m_control_block)
+            {
+                assert(!other.m_ptr);
+                return *this;
+            }
+
+            m_ptr           = other.m_ptr;
+            m_control_block = other.m_control_block;
+            m_control_block->get_weak_count()++;
             return *this;
         }
 
