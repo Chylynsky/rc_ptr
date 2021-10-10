@@ -23,7 +23,7 @@ TEST_CASE("weak_rc_ptr, lock on valid rc_ptr constructed", "[lock]")
     int* raw = new int{ 6 };
     memory::rc_ptr<int> first{ raw };
     memory::weak_rc_ptr<int> second{ first };
-    auto third = first.lock();
+    auto third = second.lock();
     REQUIRE(third.use_count() == 2);
     REQUIRE(third.get() == raw);
 }
@@ -46,6 +46,7 @@ TEST_CASE("weak_rc_ptr, lock on expired", "[lock]")
             memory::rc_ptr<int> second{ new int{ 0 } };
             first = second;
         }
+        first.lock();
     }),
         memory::bad_weak_rc_ptr);
 }
