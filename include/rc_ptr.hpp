@@ -99,7 +99,7 @@ namespace RC_PTR_NAMESPACE
     class weak_rc_ptr;
 
     template<typename T>
-    class enable_rc_ptr_from_this;
+    class enable_rc_from_this;
 
     /**
      * @brief rc_ptr is a smart pointer that manages shared ownership of a
@@ -173,9 +173,9 @@ namespace RC_PTR_NAMESPACE
             assert(m_control_block);
             m_control_block->get_ref_count()++;
 
-            if constexpr (std::is_base_of_v<enable_rc_ptr_from_this<T>, T>)
+            if constexpr (std::is_base_of_v<enable_rc_from_this<T>, T>)
             {
-                static_assert(std::is_same_v<Del, detail::default_delete<T>>, "Custom deleters are not supported for enable_rc_ptr_from_this derived classes.");
+                static_assert(std::is_same_v<Del, detail::default_delete<T>>, "Custom deleters are not supported for enable_rc_from_this derived classes.");
                 ptr->m_weak = weak_rc_ptr<T>(*this);
             }
         }
@@ -767,22 +767,22 @@ namespace RC_PTR_NAMESPACE
      * @tparam T
      */
     template<typename T>
-    class enable_rc_ptr_from_this
+    class enable_rc_from_this
     {
-        static_assert(std::is_base_of_v<enable_rc_ptr_from_this<T>, T>, "enable_rc_ptr_from_this is not a base for the supplied type.");
+        static_assert(std::is_base_of_v<enable_rc_from_this<T>, T>, "enable_rc_from_this is not a base for the supplied type.");
 
     protected:
-        constexpr enable_rc_ptr_from_this() noexcept = default;
+        constexpr enable_rc_from_this() noexcept = default;
 
-        enable_rc_ptr_from_this(const enable_rc_ptr_from_this&) = default;
+        enable_rc_from_this(const enable_rc_from_this&) = default;
 
-        enable_rc_ptr_from_this(enable_rc_ptr_from_this&&) = default;
+        enable_rc_from_this(enable_rc_from_this&&) = default;
 
-        ~enable_rc_ptr_from_this() = default;
+        ~enable_rc_from_this() = default;
 
-        enable_rc_ptr_from_this& operator=(const enable_rc_ptr_from_this&) = default;
+        enable_rc_from_this& operator=(const enable_rc_from_this&) = default;
 
-        enable_rc_ptr_from_this& operator=(enable_rc_ptr_from_this&&) = default;
+        enable_rc_from_this& operator=(enable_rc_from_this&&) = default;
 
     public:
         /**
