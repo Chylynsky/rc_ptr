@@ -770,7 +770,7 @@ namespace RC_PTR_NAMESPACE
     class enable_rc_from_this
     {
     protected:
-        constexpr enable_rc_from_this() noexcept = default;
+        constexpr enable_rc_from_this() = default;
 
         enable_rc_from_this(const enable_rc_from_this&) = default;
 
