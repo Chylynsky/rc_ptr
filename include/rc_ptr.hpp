@@ -769,8 +769,6 @@ namespace RC_PTR_NAMESPACE
     template<typename T>
     class enable_rc_from_this
     {
-        static_assert(std::is_base_of_v<enable_rc_from_this<T>, T>, "enable_rc_from_this is not a base for the supplied type.");
-
     protected:
         constexpr enable_rc_from_this() noexcept = default;
 
