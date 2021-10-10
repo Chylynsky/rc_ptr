@@ -34,7 +34,9 @@ set(TEST_SRCS
     "swap.cpp"
     "test_main.cpp"
     "unique.cpp"
-    "use_count.cpp")
+    "use_count.cpp"
+    "lock.cpp"
+    "expired.cpp")
 
 add_executable(${TARGET} ${TEST_SRCS})
 

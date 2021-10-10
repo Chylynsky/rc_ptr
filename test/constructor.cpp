@@ -178,7 +178,7 @@ TEST_CASE("mixed, weak_rc_ptr from rc_ptr", "[constructor]")
     REQUIRE(!second.expired());
 }
 
-TEST_CASE("mixed, rc_ptr from weak_rc_ptr", "[constructor]")
+TEST_CASE("mixed, rc_ptr from valid weak_rc_ptr", "[constructor]")
 {
     memory::rc_ptr<int> first{ new int{ 0 } };
     memory::weak_rc_ptr<int> weak{ first };
@@ -189,4 +189,13 @@ TEST_CASE("mixed, rc_ptr from weak_rc_ptr", "[constructor]")
     REQUIRE(second.use_count() == 2);
     REQUIRE(!weak.expired());
     REQUIRE(weak.use_count() == 2);
+}
+
+TEST_CASE("mixed, rc_ptr from invalid weak_rc_ptr", "[constructor]")
+{
+    REQUIRE_THROWS_AS(std::invoke([]() {
+        memory::weak_rc_ptr<int> first;
+        memory::rc_ptr<int> second{ first };
+    }),
+        memory::bad_weak_rc_ptr);
 }

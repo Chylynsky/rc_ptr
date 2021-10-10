@@ -81,3 +81,39 @@ TEST_CASE("rc_ptr, double swap - valid pointers", "[swap]")
     REQUIRE(second.use_count() == 1);
     REQUIRE(second.unique());
 }
+
+TEST_CASE("weak_rc_ptr, swap two default constructed", "[swap]")
+{
+    memory::weak_rc_ptr<int> first;
+    memory::weak_rc_ptr<int> second;
+    first.swap(second);
+    REQUIRE(first.expired());
+    REQUIRE(first.use_count() == 0);
+    REQUIRE(second.expired());
+    REQUIRE(second.use_count() == 0);
+}
+
+TEST_CASE("weak_rc_ptr, swap default constructed and rc_ptr constructed", "[swap]")
+{
+    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::weak_rc_ptr<int> second{ first };
+    memory::weak_rc_ptr<int> third;
+    second.swap(third);
+    REQUIRE(second.expired());
+    REQUIRE(second.use_count() == 0);
+    REQUIRE(!third.expired());
+    REQUIRE(third.use_count() == 1);
+}
+
+TEST_CASE("weak_rc_ptr, swap two constructed from valid rc_ptr objects", "[swap]")
+{
+    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::rc_ptr<int> second{ new int{ 6 } };
+    memory::weak_rc_ptr<int> weak_first{ first };
+    memory::weak_rc_ptr<int> weak_second{ second };
+    weak_first.swap(weak_second);
+    REQUIRE(!weak_first.expired());
+    REQUIRE(weak_first.use_count() == 1);
+    REQUIRE(!weak_second.expired());
+    REQUIRE(weak_second.use_count() == 1);
+}

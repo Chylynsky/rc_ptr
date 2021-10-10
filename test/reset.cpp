@@ -128,3 +128,20 @@ TEST_CASE("rc_ptr, reset when constructed with custom deleter", "[reset]")
     REQUIRE(ptr.use_count() == 0);
     REQUIRE(!ptr.unique());
 }
+
+TEST_CASE("weak_rc_ptr, reset after default construction", "[reset]")
+{
+    memory::weak_rc_ptr<int> ptr;
+    ptr.reset();
+    REQUIRE(ptr.use_count() == 0);
+    REQUIRE(ptr.expired());
+}
+
+TEST_CASE("weak_rc_ptr, reset when constructed from rc_ptr", "[reset]")
+{
+    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::weak_rc_ptr<int> second{ first };
+    second.reset();
+    REQUIRE(second.use_count() == 0);
+    REQUIRE(second.expired());
+}
