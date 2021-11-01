@@ -33,11 +33,15 @@ namespace RC_PTR_NAMESPACE
             {
                 if constexpr (std::is_array_v<T>)
                 {
+                    assert(ptr);
                     delete[] ptr;
+                    ptr = nullptr;
                 }
                 else
                 {
+                    assert(ptr);
                     delete ptr;
+                    ptr = nullptr;
                 }
             }
         };
@@ -176,6 +180,7 @@ namespace RC_PTR_NAMESPACE
             if constexpr (std::is_base_of_v<enable_rc_from_this<T>, T>)
             {
                 static_assert(std::is_same_v<Del, detail::default_delete<T>>, "Custom deleters are not supported for enable_rc_from_this derived classes.");
+                assert(ptr->m_weak.expired());
                 ptr->m_weak = weak_rc_ptr<T>(*this);
             }
         }
@@ -384,6 +389,7 @@ namespace RC_PTR_NAMESPACE
                 return;
             }
 
+            assert(m_control_block);
             delete m_control_block;
             m_control_block = nullptr;
         }
@@ -628,6 +634,7 @@ namespace RC_PTR_NAMESPACE
                 return;
             }
 
+            assert(m_control_block);
             delete m_control_block;
             m_control_block = nullptr;
         }
