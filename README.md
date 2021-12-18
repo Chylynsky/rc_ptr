@@ -26,13 +26,13 @@ Notes:
 
 Include the header:
 
-```
+```cpp
 #include "rc_ptr/rc_ptr.hpp"
 ```
 
 Initialize with a pointer:
 
-```
+```cpp
 using namespace memory;
 
 rc_ptr<int> ptr{new int{24}};
@@ -41,7 +41,7 @@ assert(ptr); // Contextually convertible to bool
 
 ***rc_ptr*** objects can be dereferenced:
 
-```
+```cpp
 using namespace memory;
 
 rc_ptr<std::pair<int, float>> ptr{new std::pair<int, float>{ 0, 0.0f }};
@@ -54,7 +54,7 @@ ptr->second = 32.0f;
 ***rc_ptr*** objects are both move and copy constructible.
 The internal reference count increases with each copy of the ***rc_ptr*** object. Current number of ***rc_ptr*** objects managing the pointer can be obtained by **use_count** method:
 
-```
+```cpp
 using namespace memory;
 
 rc_ptr<int> first{new int{24}};
@@ -67,7 +67,7 @@ assert(second.use_count() == 2);
 Moving does not affect the reference count. 
 Check for uniqueness can be made by using the unique method:
 
-```
+```cpp
 using namespace memory;
 
 rc_ptr<int> first{new int{24}};
@@ -78,7 +78,7 @@ assert(second.use_count() == 1)
 
 Check if the managed object has expired by using the ***weak_rc_ptr***:
 
-```
+```cpp
 using namespace memory;
 
 weak_rc_ptr<int> weak;
@@ -94,7 +94,7 @@ assert(weak.expired());
 
 ***enable_rc_from_this*** is used to safely manage **this** pointer:
 
-```
+```cpp
 class session : public enable_rc_from_this<session>
 {
     // ...
@@ -110,7 +110,7 @@ class session : public enable_rc_from_this<session>
 
 By default, all the types described sit in the ***memory*** namespace. This can be changed by defining the RC_PTR_NAMESPACE macro with the namespace name you want BEFORE including the rc_ptr.hpp header:
 
-```
+```cpp
 #define RC_PTR_NAMESPACE my_namespace
 #include "rc_ptr/rc_ptr.hpp"
 // ...
