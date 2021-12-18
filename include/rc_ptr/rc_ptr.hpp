@@ -14,10 +14,18 @@
 #include <memory>
 #include <stdexcept>
 
+/**
+ * @brief Macro controlling the namespace name. Default is "memory".
+ *
+ */
 #ifndef RC_PTR_NAMESPACE
 #define RC_PTR_NAMESPACE memory
 #endif
 
+/**
+ * @brief Namespace name set by RC_PTR_NAMESPACE macro. Default is "memory".
+ *
+ */
 namespace RC_PTR_NAMESPACE
 {
     namespace detail
@@ -25,56 +33,70 @@ namespace RC_PTR_NAMESPACE
         template<bool Cond>
         using Requires = std::enable_if_t<Cond, int>;
 
-        inline constexpr const char* BAD_WEAK_RC_PTR_MESSAGE{ "rc_ptr expired." };
-
-        template<typename T>
-        struct default_delete {
-            void operator()(std::remove_extent_t<T>* ptr) const noexcept
-            {
-                if constexpr (std::is_array_v<T>)
-                {
-                    assert(ptr);
-                    delete[] ptr;
-                    ptr = nullptr;
-                }
-                else
-                {
-                    assert(ptr);
-                    delete ptr;
-                    ptr = nullptr;
-                }
-            }
-        };
-
-        template<typename T, typename Deleter>
+        template<typename T, typename Deleter, typename Alloc>
         class control_block
         {
         public:
-            using deleter_type = Deleter;
-            using size_type    = std::size_t;
+            using size_type      = std::size_t;
+            using deleter_type   = Deleter;
+            using allocator_type = Alloc;
 
-            control_block() : m_ref_count{ 0 }, m_weak_count{ 0 }, m_deleter{}
+            control_block() :
+                m_ref_count{ 0 },
+                m_weak_count{ 0 },
+                m_deleter{},
+                m_allocator{}
             {
             }
 
-            template<typename Del>
-            control_block(Del&& deleter) :
+            template<typename D>
+            control_block(D deleter) :
                 m_ref_count{ 0 },
                 m_weak_count{ 0 },
-                m_deleter{ std::forward<Del>(deleter) }
+                m_deleter{ std::forward<D>(deleter) },
+                m_allocator{}
+            {
+            }
+
+            template<typename D, typename A>
+            control_block(D&& deleter, A&& allocator) :
+                m_ref_count{ 0 },
+                m_weak_count{ 0 },
+                m_deleter{ std::forward<D>(deleter) },
+                m_allocator{ std::forward<A>(allocator) }
             {
             }
 
             ~control_block() = default;
 
-            size_type& get_ref_count() noexcept
+            size_type get_ref_count() const noexcept
             {
                 return m_ref_count;
             }
 
-            size_type& get_weak_count() noexcept
+            size_type get_weak_count() const noexcept
             {
                 return m_weak_count;
+            }
+
+            void increase_ref_count() noexcept
+            {
+                ++m_ref_count;
+            }
+
+            void increase_weak_count() noexcept
+            {
+                ++m_weak_count;
+            }
+
+            void decrease_ref_count() noexcept
+            {
+                --m_ref_count;
+            }
+
+            void decrease_weak_count() noexcept
+            {
+                --m_weak_count;
             }
 
             deleter_type& get_deleter() noexcept
@@ -82,10 +104,16 @@ namespace RC_PTR_NAMESPACE
                 return m_deleter;
             }
 
+            allocator_type get_allocator() noexcept
+            {
+                return m_allocator;
+            }
+
         private:
             size_type m_ref_count;
             size_type m_weak_count;
             deleter_type m_deleter;
+            allocator_type m_allocator;
         };
     }
 
@@ -99,7 +127,7 @@ namespace RC_PTR_NAMESPACE
         bad_weak_rc_ptr(std::string msg) : base{ msg } { }
     };
 
-    template<typename T, typename Deleter = detail::default_delete<T>>
+    template<typename T, typename Deleter = std::default_delete<T>, typename Alloc = std::allocator<T>>
     class weak_rc_ptr;
 
     template<typename T>
@@ -127,14 +155,15 @@ namespace RC_PTR_NAMESPACE
      * @tparam Deleter Type of a deleter. By default, delete is used with
      * non-array types and delete[] with array types.
      */
-    template<typename T, typename Deleter = detail::default_delete<T>>
+    template<typename T, typename Deleter = std::default_delete<T>, typename Alloc = std::allocator<T>>
     class rc_ptr
     {
     public:
-        using element_type = std::remove_extent_t<T>;
-        using pointer      = element_type*;
-        using reference    = element_type&;
-        using deleter_type = Deleter;
+        using element_type   = std::remove_extent_t<T>;
+        using pointer        = element_type*;
+        using reference      = element_type&;
+        using deleter_type   = Deleter;
+        using allocator_type = Alloc;
 
         /**
          * @brief Constructs rc_ptr that owns nothing.
@@ -157,14 +186,18 @@ namespace RC_PTR_NAMESPACE
         }
 
         /**
-         * @brief Constructs rc_ptr with a pointer ptr. Newly constructed rc_ptr
-         * owns ptr. Requires that deleter_type is nothrow DefaultConstructible
-         * and is not a pointer type.
+         * @brief Construct rc_ptr object from the pointer ptr. Custom deleter
+         * and/or custom allocator may be provided.
          *
-         * @param ptr
+         * @tparam D Deleter type.
+         * @tparam A Allocator type.
+         * @param ptr Pointer to be managed by the rc_ptr.
+         * @param deleter Deleter, called when the last remaining rc_ptr
+         * managing ptr is destroyed. Cannot throw.
+         * @param allocator Allocator to be used for internal allocations.
          */
-        template<typename Del = deleter_type, typename = detail::Requires<std::is_nothrow_default_constructible_v<Del> && !std::is_pointer_v<Del>>>
-        explicit rc_ptr(pointer ptr) noexcept :
+        template<typename D = deleter_type, typename A = allocator_type>
+        rc_ptr(pointer ptr, D&& deleter = D{}, A&& allocator = A{}) :
             m_ptr{ ptr },
             m_control_block{ nullptr }
         {
@@ -173,96 +206,23 @@ namespace RC_PTR_NAMESPACE
                 return;
             }
 
-            m_control_block = new control_block_type{};
-            assert(m_control_block);
-            m_control_block->get_ref_count()++;
+            {
+                auto control_block_allocator = control_block_allocator_type{ allocator };
+                auto mem = control_block_allocator_traits_type::allocate(control_block_allocator, 1);
+
+                assert(mem);
+                control_block_allocator_traits_type::construct(control_block_allocator, mem, std::forward<D>(deleter), std::forward<A>(allocator));
+
+                m_control_block = mem;
+            }
+
+            m_control_block->increase_ref_count();
 
             if constexpr (std::is_base_of_v<enable_rc_from_this<T>, T>)
             {
-                static_assert(std::is_same_v<Del, detail::default_delete<T>>, "Custom deleters are not supported for enable_rc_from_this derived classes.");
-                assert(ptr->m_weak.expired());
                 ptr->m_weak = weak_rc_ptr<T>(*this);
             }
         }
-
-        /**
-         * @brief Constructs rc_ptr with a pointer ptr. Newly constructed rc_ptr
-         * owns ptr. Requires that Del is nothrow CopyConstructible.
-         *
-         * @tparam Del
-         * @param ptr
-         * @param deleter
-         */
-        template<typename Del = deleter_type, typename = detail::Requires<std::is_nothrow_copy_constructible_v<Del>>>
-        rc_ptr(pointer ptr, const deleter_type& deleter) noexcept :
-            m_ptr{ ptr },
-            m_control_block{ nullptr }
-        {
-            if (!m_ptr)
-            {
-                return;
-            }
-
-            m_control_block = new control_block_type{ std::forward<decltype(deleter)>(deleter) };
-            assert(m_control_block);
-            m_control_block->get_ref_count()++;
-        }
-
-        /**
-         * @brief Constructs rc_ptr with a pointer ptr. Newly constructed rc_ptr
-         * owns ptr if ptr is not nullptr. Requires that Del is nothrow
-         * MoveConstructible and is not a pointer type.
-         *
-         * This constructor participates in overload resolution only when Del is
-         * not an lvalue reference.
-         *
-         * @param ptr
-         * @param deleter
-         */
-        template<typename Del = deleter_type, typename = detail::Requires<!std::is_lvalue_reference_v<Del> && std::is_nothrow_move_constructible_v<Del>>>
-        rc_ptr(pointer ptr, Del&& deleter) noexcept :
-            m_ptr{ ptr },
-            m_control_block{ nullptr }
-        {
-            if (!m_ptr)
-            {
-                return;
-            }
-
-            m_control_block = new control_block_type{ std::move(deleter) };
-            assert(m_control_block);
-            m_control_block->get_ref_count()++;
-        }
-
-        /**
-         * @brief Constructs rc_ptr with a pointer ptr. Newly constructed rc_ptr
-         * owns ptr if ptr is not nullptr.
-         *
-         * This constructor participates in overload resolution only when Del is
-         * an lvalue reference.
-         *
-         * @tparam Del
-         * @tparam typename
-         * @param ptr
-         * @param deleter
-         */
-        template<typename Del = deleter_type, typename = detail::Requires<std::is_lvalue_reference_v<Del>>>
-        rc_ptr(pointer ptr, Del& deleter) noexcept :
-            m_ptr{ ptr },
-            m_control_block{ nullptr }
-        {
-            if (!m_ptr)
-            {
-                return;
-            }
-
-            m_control_block = new control_block_type{ std::forward<decltype(deleter)>(deleter) };
-            assert(m_control_block);
-            m_control_block->get_ref_count()++;
-        }
-
-        template<typename Del = deleter_type, typename = detail::Requires<std::is_lvalue_reference_v<Del>>>
-        rc_ptr(pointer ptr, std::remove_reference_t<Del>&& deleter) = delete;
 
         /**
          * @brief Copy constructor. other must own a valid pointer. Increases
@@ -295,7 +255,7 @@ namespace RC_PTR_NAMESPACE
          * @param other
          * @throws bad_weak_rc_ptr when other.expired() == true
          */
-        rc_ptr(const weak_rc_ptr<T, deleter_type>& other) :
+        rc_ptr(const weak_rc_ptr<T, deleter_type, allocator_type>& other) :
             m_ptr{ pointer() },
             m_control_block{ nullptr }
         {
@@ -319,7 +279,7 @@ namespace RC_PTR_NAMESPACE
             assert(other.m_control_block && other.use_count() != 0);
             m_control_block = other.m_control_block;
             m_ptr           = other.get();
-            m_control_block->get_ref_count()++;
+            m_control_block->increase_ref_count();
             return *this;
         }
 
@@ -349,7 +309,7 @@ namespace RC_PTR_NAMESPACE
          * @param other
          * @throws bad_weak_rc_ptr when other.expired() == true
          */
-        rc_ptr& operator=(const weak_rc_ptr<T, deleter_type>& other)
+        rc_ptr& operator=(const weak_rc_ptr<T, deleter_type, allocator_type>& other)
         {
             *this = other.lock();
             return *this;
@@ -371,10 +331,9 @@ namespace RC_PTR_NAMESPACE
                 return;
             }
 
-            m_control_block->get_ref_count()--;
-
-            if (m_control_block->get_ref_count() != 0)
+            if (m_control_block->get_ref_count() != 1)
             {
+                m_control_block->decrease_ref_count();
                 return;
             }
 
@@ -384,13 +343,21 @@ namespace RC_PTR_NAMESPACE
                 m_ptr = pointer();
             }
 
+            m_control_block->decrease_ref_count();
+
             if (m_control_block->get_weak_count() != 0)
             {
                 return;
             }
 
-            assert(m_control_block);
-            delete m_control_block;
+            {
+                assert(m_control_block);
+                auto control_block_allocator =
+                    control_block_allocator_type{ m_control_block->get_allocator() };
+                control_block_allocator_traits_type::destroy(control_block_allocator, m_control_block);
+                control_block_allocator_traits_type::deallocate(control_block_allocator, m_control_block, 1);
+            }
+
             m_control_block = nullptr;
         }
 
@@ -424,6 +391,16 @@ namespace RC_PTR_NAMESPACE
         deleter_type& get_deleter() noexcept
         {
             return m_control_block->get_deleter();
+        }
+
+        /**
+         * @brief Returns the allocator.
+         *
+         * @return deleter_type&
+         */
+        allocator_type& get_allocator() noexcept
+        {
+            return m_control_block->get_allocator();
         }
 
         /**
@@ -506,9 +483,13 @@ namespace RC_PTR_NAMESPACE
         }
 
     private:
-        using control_block_type = detail::control_block<T, deleter_type>;
+        using allocator_traits = std::allocator_traits<allocator_type>;
+        using control_block_type = detail::control_block<T, deleter_type, allocator_type>;
 
-        friend class weak_rc_ptr<T, Deleter>;
+        using control_block_allocator_type        = typename std::allocator_traits<allocator_type>::rebind_alloc<control_block_type>;
+        using control_block_allocator_traits_type = typename std::allocator_traits<allocator_type>::rebind_traits<control_block_type>;
+
+        friend class weak_rc_ptr<T, deleter_type, allocator_type>;
 
         rc_ptr(pointer ptr, control_block_type* control_block) :
             m_ptr{ ptr },
@@ -516,7 +497,7 @@ namespace RC_PTR_NAMESPACE
         {
             assert(m_ptr);
             assert(m_control_block);
-            m_control_block->get_ref_count()++;
+            m_control_block->increase_ref_count();
         }
 
         pointer m_ptr;
@@ -545,14 +526,15 @@ namespace RC_PTR_NAMESPACE
      * @tparam T
      * @tparam Deleter
      */
-    template<typename T, typename Deleter>
+    template<typename T, typename Deleter, typename Alloc>
     class weak_rc_ptr
     {
     public:
-        using element_type = std::remove_extent_t<T>;
-        using pointer      = element_type*;
-        using reference    = element_type&;
-        using deleter_type = Deleter;
+        using element_type   = std::remove_extent_t<T>;
+        using pointer        = element_type*;
+        using reference      = element_type&;
+        using deleter_type   = Deleter;
+        using allocator_type = Alloc;
 
         /**
          * @brief Default constructor. Constructs an empty weak_rc_ptr object.
@@ -594,11 +576,11 @@ namespace RC_PTR_NAMESPACE
          *
          * @param other
          */
-        weak_rc_ptr(const rc_ptr<T, Deleter>& other) :
+        weak_rc_ptr(const rc_ptr<T, deleter_type, allocator_type>& other) :
             m_ptr{ pointer() },
             m_control_block{ nullptr }
         {
-            if (!other.m_ptr)
+            if (!other.get())
             {
                 return;
             }
@@ -606,7 +588,7 @@ namespace RC_PTR_NAMESPACE
             assert(other.m_control_block);
             m_ptr           = other.get();
             m_control_block = other.m_control_block;
-            m_control_block->get_weak_count()++;
+            m_control_block->increase_weak_count();
         }
 
         /**
@@ -622,7 +604,7 @@ namespace RC_PTR_NAMESPACE
                 return;
             }
 
-            m_control_block->get_weak_count()--;
+            m_control_block->decrease_weak_count();
 
             if (m_control_block->get_ref_count() != 0)
             {
@@ -634,8 +616,14 @@ namespace RC_PTR_NAMESPACE
                 return;
             }
 
-            assert(m_control_block);
-            delete m_control_block;
+            {
+                assert(m_control_block);
+                auto control_block_allocator =
+                    control_block_allocator_type{ m_control_block->get_allocator() };
+                control_block_allocator_traits_type::destroy(control_block_allocator, m_control_block);
+                control_block_allocator_traits_type::deallocate(control_block_allocator, m_control_block, 1);
+            }
+
             m_control_block = nullptr;
         }
 
@@ -656,7 +644,7 @@ namespace RC_PTR_NAMESPACE
 
             m_ptr           = other.m_ptr;
             m_control_block = other.m_control_block;
-            m_control_block->get_weak_count()++;
+            m_control_block->increase_weak_count();
             return *this;
         }
 
@@ -686,7 +674,7 @@ namespace RC_PTR_NAMESPACE
          *
          * @param other
          */
-        weak_rc_ptr& operator=(const rc_ptr<T, Deleter>& other)
+        weak_rc_ptr& operator=(const rc_ptr<T, deleter_type, allocator_type>& other)
         {
             if (!other.m_control_block)
             {
@@ -696,7 +684,7 @@ namespace RC_PTR_NAMESPACE
 
             m_ptr           = other.m_ptr;
             m_control_block = other.m_control_block;
-            m_control_block->get_weak_count()++;
+            m_control_block->increase_weak_count();
             return *this;
         }
 
@@ -729,16 +717,16 @@ namespace RC_PTR_NAMESPACE
          * @return rc_ptr<T, deleter_type>
          * @throws bad_weak_rc_ptr when calling on an expired weak_rc_ptr.
          */
-        rc_ptr<T, deleter_type> lock() const
+        rc_ptr<T, deleter_type, allocator_type> lock() const
         {
             if (expired())
             {
-                throw bad_weak_rc_ptr(detail::BAD_WEAK_RC_PTR_MESSAGE);
+                throw bad_weak_rc_ptr("rc_ptr expired.");
             }
 
             assert(m_ptr);
             assert(m_control_block);
-            return rc_ptr<T, deleter_type>{ m_ptr, m_control_block };
+            return rc_ptr<T, deleter_type, allocator_type>{ m_ptr, m_control_block };
         }
 
         /**
@@ -762,7 +750,10 @@ namespace RC_PTR_NAMESPACE
         }
 
     private:
-        using control_block_type = detail::control_block<T, deleter_type>;
+        using control_block_type = detail::control_block<T, deleter_type, allocator_type>;
+
+        using control_block_allocator_type        = typename std::allocator_traits<allocator_type>::rebind_alloc<control_block_type>;
+        using control_block_allocator_traits_type = typename std::allocator_traits<allocator_type>::rebind_traits<control_block_type>;
 
         pointer m_ptr;
         control_block_type* m_control_block;
