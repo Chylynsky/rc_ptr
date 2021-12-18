@@ -853,6 +853,13 @@ private:
 
     mutable weak_rc_ptr<T> m_weak;
 };
+
+template<typename T, typename... ArgsT>
+rc_ptr<T> make_rc(ArgsT&&... args)
+{
+    return rc_ptr<T>{ new T{ std::forward<ArgsT>(args)... } };
+}
+
 } // namespace RC_PTR_NAMESPACE
 
 #endif

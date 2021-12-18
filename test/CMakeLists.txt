@@ -37,7 +37,8 @@ set(TEST_SRCS
     "use_count.cpp"
     "lock.cpp"
     "expired.cpp"
-    "enable_rc_from_this.cpp")
+    "enable_rc_from_this.cpp"
+    "make_rc.cpp")
 
 add_executable(${TARGET} ${TEST_SRCS})
 
