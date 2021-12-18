@@ -124,7 +124,7 @@ private:
  */
 struct bad_weak_rc_ptr : public std::runtime_error {
     using base = std::runtime_error;
-    bad_weak_rc_ptr(std::string msg) : base{ msg } { }
+    bad_weak_rc_ptr(std::string msg) : base{ std::move(msg) } { }
 };
 
 template<typename T, typename Deleter = std::default_delete<T>,
@@ -166,6 +166,7 @@ public:
     using reference      = element_type&;
     using deleter_type   = Deleter;
     using allocator_type = Alloc;
+    using weak_type      = weak_rc_ptr<T, deleter_type, allocator_type>;
 
     /**
      * @brief Constructs rc_ptr that owns nothing.
