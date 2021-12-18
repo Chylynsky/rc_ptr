@@ -1,29 +1,149 @@
-[![build-master](https://github.com/Chylynsky/rc_ptr/actions/workflows/build-master.yml/badge.svg)](https://github.com/Chylynsky/rc_ptr/actions/workflows/build-master.yml) [![test-master](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-master.yml/badge.svg)](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-master.yml)
+[![master](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-master.yml/badge.svg)](https://github.com/Chylynsky/rc_ptr/actions/workflows/test-master.yml)
 
 # rc_ptr
 
-Implementation of reference counted smart pointer for single threaded enviroments.
+Reference counted smart pointer for single threaded enviroments.
 
 ## Description
 
-This library provides a reference counter, non-synchronized smart pointer, witch statically dispatched deleters.
+***rc_ptr*** class template manages shared ownership of an object of type **T** via the pointer. Multiple ***rc_ptr*** objects can manage the single object. The managed object is deleted when the last remaining ***rc_ptr*** object is either destroyed or reset. ***rc_ptr*** meets [**CopyConstructible**](https://en.cppreference.com/w/cpp/named_req/CopyConstructible), [**CopyAssignable**](https://en.cppreference.com/w/cpp/named_req/CopyAssignable), [**MoveConstructible**](https://en.cppreference.com/w/cpp/named_req/MoveConstructible) and [**MoveAssignable**](https://en.cppreference.com/w/cpp/named_req/MoveAssignable) requirements.
 
-This library consists of below classes:
-* rc_ptr
-* weak_rc_ptr
-* enable_rc_from_this
-* bad_weak_rc_ptr
+***weak_rc_ptr*** class template represents the non owning reference to the object managed by ***rc_ptr***. It can be used to break reference cycles. In order to obtain access to the managed object, the ***weak_rc_ptr*** instance must be converted to ***rc_ptr*** either by assignment or by the **lock** method. When the conversion fails, the ***bad_weak_rc_ptr*** exception is thrown.
 
-rc_ptr is a reference counted, non-synchronized smart pointer which releases ownership over the managed object when its internal reference count reaches zero. Arrays are supported. Custom deleters are statically dispatched, so their type must be known at compile time.
+***rc_ptr*** keeps track of the reference count by allocating the control block internally. By default, it is allocated and deallocated using the [**std::allocator<T>**](https://en.cppreference.com/w/cpp/memory/allocator). The control block is deallocated w1hen the count of both ***rc_ptr*** and ***weak_rc_ptr*** objects managing a single object reaches zero.
 
-weak_rc_ptr may be used to break reference cycles. Current number of rc_ptr and weak_rc_ptr objects may be obtained at any time from weak_rc_ptr instance. weak_rc_ptr object may be converted to rc_ptr when the ownership is not yet released.
+Custom deleters may be used to customize the objects destruction.
 
-enable_rc_from_this is used to safely create rc_ptr objects from this pointer.
+Custom allocator may be provided for internal use to allocate and later deallocate the control block.
 
-bad_weak_rc_ptr is as exception thrown when trying to obtain rc_ptr from expired weak_rc_ptr.
+Managing **this** pointer with ***rc_ptr*** directly is unsafe and will lead to undefined behaviour. This is what ***enable_rc_from_this*** is used for (see examples below).
 
-NOTE:
-Currently the control block is allocated using new and delete.
+Notes:
+* It is, by design, *not* intended to be used in multithreaded enviroments due to lack of synchronization.
+* Requires C++17.
+
+## Examples
+
+Include the header:
+
+```
+#include "rc_ptr/rc_ptr.hpp"
+```
+
+Initialize with a pointer:
+
+```
+using namespace memory;
+
+rc_ptr<int> ptr{new int{24}};
+assert(ptr); // Contextually convertible to bool
+```
+
+***rc_ptr*** objects can be dereferenced:
+
+```
+using namespace memory;
+
+rc_ptr<std::pair<int, float>> ptr{new std::pair<int, float>{ 0, 0.0f }};
+
+std::pair<int, float> pair = *ptr;
+ptr->first = 26;
+ptr->second = 32.0f;
+```
+
+***rc_ptr*** objects are both move and copy constructible.
+The internal reference count increases with each copy of the ***rc_ptr*** object. Current number of ***rc_ptr*** objects managing the pointer can be obtained by **use_count** method:
+
+```
+using namespace memory;
+
+rc_ptr<int> first{new int{24}};
+rc_ptr<int> second = first;
+
+assert(first.use_count() == 2);
+assert(second.use_count() == 2);
+```
+
+Moving does not affect the reference count. 
+Check for uniqueness can be made by using the unique method:
+
+```
+using namespace memory;
+
+rc_ptr<int> first{new int{24}};
+rc_ptr<int> second = std::move(first);
+
+assert(second.use_count() == 1)
+```
+
+Check if the managed object has expired by using the ***weak_rc_ptr***:
+
+```
+using namespace memory;
+
+weak_rc_ptr<int> weak;
+
+{
+    rc_ptr<int> ptr{new int{24}};
+    weak = ptr;
+    assert(!weak.expired());
+} // ptr goes out of scope
+
+assert(weak.expired());
+```
+
+***enable_rc_from_this*** is used to safely manage **this** pointer:
+
+```
+class session : public enable_rc_from_this<session>
+{
+    // ...
+
+    rc_ptr<session> rc_session()
+    {
+        return rc_from_this(); // Method derived from enable_rc_from_this
+    }
+};
+```
+
+### A word on namespaceing
+
+By default, all the types described sit in the ***memory*** namespace. This can be changed by defining the RC_PTR_NAMESPACE macro with the namespace name you want BEFORE including the rc_ptr.hpp header:
+
+```
+#define RC_PTR_NAMESPACE my_namespace
+#include "rc_ptr/rc_ptr.hpp"
+// ...
+my_namespace::rc_ptr<float[]> = ...
+```
+
+## Documentation
+
+In order to generate documentation use doxygen with the supplied configuration file.
+
+```
+doxygen .doxygen
+```
+
+## CI
+
+CI pipeline consists of over a hundred of tests executed under [**Valgrind**](https://valgrind.org/).
+
+## CMake
+
+Example configuration using [**FetchContent**](https://cmake.org/cmake/help/latest/module/FetchContent.html#id1):
+
+```
+FetchContent_Declare(
+    rc_ptr
+    GIT_REPOSITORY    https://github.com/Chylynsky/rc_ptr.git
+    GIT_TAG           master
+)
+
+FetchContent_MakeAvailable(
+    rc_ptr
+)
+```
 
 ## Benchmark
 
