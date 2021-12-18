@@ -7,7 +7,7 @@
 
 #include "catch2/catch.hpp"
 
-#include "rc_ptr.hpp"
+#include "rc_ptr/rc_ptr.hpp"
 
 class test : public memory::enable_rc_from_this<test>
 {

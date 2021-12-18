@@ -7,7 +7,7 @@
 
 #include "catch2/catch.hpp"
 
-#include "rc_ptr.hpp"
+#include "rc_ptr/rc_ptr.hpp"
 
 TEST_CASE("weak_rc_ptr, lock on default constructed", "[lock]")
 {

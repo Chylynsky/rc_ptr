@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <functional>
 
-#include "rc_ptr.hpp"
+#include "rc_ptr/rc_ptr.hpp"
 
 template<typename T>
 struct deleter_copy_constructible {

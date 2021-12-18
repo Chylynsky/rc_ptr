@@ -2,7 +2,7 @@
 
 #include <memory>
 
-#include "rc_ptr.hpp"
+#include "rc_ptr/rc_ptr.hpp"
 
 static void shared_ptr_copy(benchmark::State& state)
 {

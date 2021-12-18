@@ -9,7 +9,7 @@
 
 #include <functional>
 
-#include "rc_ptr.hpp"
+#include "rc_ptr/rc_ptr.hpp"
 
 TEST_CASE("rc_ptr, get after default construction", "[get]")
 {

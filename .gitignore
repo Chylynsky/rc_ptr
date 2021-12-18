@@ -1,2 +1,5 @@
 .vscode
 build
+docs
+latex
+cache.hpp
