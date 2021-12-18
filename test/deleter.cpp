@@ -33,21 +33,36 @@ struct deleter_move_constructible {
     }
 };
 
+template<typename T>
+static void deleter_function(T* ptr)
+{
+    delete ptr;
+}
+
 TEST_CASE("rc_ptr, copy constructible", "[deleter]")
 {
-    deleter_copy_constructible<int> deleter;
+    deleter_copy_constructible<int>                      deleter;
     memory::rc_ptr<int, deleter_copy_constructible<int>> ptr(nullptr, deleter);
 }
 
 TEST_CASE("rc_ptr, move constructible", "[deleter]")
 {
-    memory::rc_ptr<int, deleter_move_constructible<int>> ptr(nullptr, deleter_move_constructible<int>());
+    memory::rc_ptr<int, deleter_move_constructible<int>> ptr(
+        nullptr,
+        deleter_move_constructible<int>());
 }
 
 TEST_CASE("rc_ptr, reference type", "[deleter]")
 {
-    deleter_copy_constructible<int> deleter;
+    deleter_copy_constructible<int>                       deleter;
     memory::rc_ptr<int, deleter_copy_constructible<int>&> ptr(nullptr, deleter);
+}
+
+TEST_CASE("rc_ptr, function pointer", "[deleter]")
+{
+    memory::rc_ptr<int, decltype(&deleter_function<int>)> ptr(
+        nullptr,
+        &deleter_function<int>);
 }
 
 TEST_CASE("rc_ptr, not called when nullptr", "[deleter]")
@@ -60,7 +75,8 @@ TEST_CASE("rc_ptr, not called when nullptr", "[deleter]")
     };
 
     using deleter_type = decltype(deleter)&;
-    static_assert(std::is_lvalue_reference_v<deleter_type>, "Deleter must be an lvalue reference.");
+    static_assert(std::is_lvalue_reference_v<deleter_type>,
+                  "Deleter must be an lvalue reference.");
 
     {
         memory::rc_ptr<int, deleter_type> ptr(nullptr, deleter);
@@ -71,8 +87,10 @@ TEST_CASE("rc_ptr, not called when nullptr", "[deleter]")
 TEST_CASE("rc_ptr, one copy", "[deleter]")
 {
     using deleter_type = std::function<void(int*)>;
-    static_assert(!std::is_lvalue_reference_v<deleter_type>, "Deleter must not be an lvalue reference.");
-    static_assert(std::is_nothrow_move_constructible_v<deleter_type>, "Deleter must be nothrow move constructible");
+    static_assert(!std::is_lvalue_reference_v<deleter_type>,
+                  "Deleter must not be an lvalue reference.");
+    static_assert(std::is_nothrow_move_constructible_v<deleter_type>,
+                  "Deleter must be nothrow move constructible");
 
     std::size_t times_called = 0;
     {
@@ -87,8 +105,10 @@ TEST_CASE("rc_ptr, one copy", "[deleter]")
 TEST_CASE("rc_ptr, two copies", "[deleter]")
 {
     using deleter_type = std::function<void(int*)>;
-    static_assert(!std::is_lvalue_reference_v<deleter_type>, "Deleter must not be an lvalue reference.");
-    static_assert(std::is_nothrow_move_constructible_v<deleter_type>, "Deleter must be nothrow move constructible");
+    static_assert(!std::is_lvalue_reference_v<deleter_type>,
+                  "Deleter must not be an lvalue reference.");
+    static_assert(std::is_nothrow_move_constructible_v<deleter_type>,
+                  "Deleter must be nothrow move constructible");
 
     std::size_t times_called = 0;
     {
