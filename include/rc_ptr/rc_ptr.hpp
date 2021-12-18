@@ -502,9 +502,9 @@ private:
         detail::control_block<T, deleter_type, allocator_type>;
 
     using control_block_allocator_type = typename std::allocator_traits<
-        allocator_type>::rebind_alloc<control_block_type>;
+        allocator_type>::template rebind_alloc<control_block_type>;
     using control_block_allocator_traits_type = typename std::allocator_traits<
-        allocator_type>::rebind_traits<control_block_type>;
+        allocator_type>::template rebind_traits<control_block_type>;
 
     friend class weak_rc_ptr<T, deleter_type, allocator_type>;
 
@@ -778,9 +778,9 @@ private:
         detail::control_block<T, deleter_type, allocator_type>;
 
     using control_block_allocator_type = typename std::allocator_traits<
-        allocator_type>::rebind_alloc<control_block_type>;
+        allocator_type>::template rebind_alloc<control_block_type>;
     using control_block_allocator_traits_type = typename std::allocator_traits<
-        allocator_type>::rebind_traits<control_block_type>;
+        allocator_type>::template rebind_traits<control_block_type>;
 
     pointer             m_ptr;
     control_block_type* m_control_block;

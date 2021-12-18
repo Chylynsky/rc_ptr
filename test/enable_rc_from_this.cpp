@@ -15,7 +15,7 @@ class test : public memory::enable_rc_from_this<test>
 
 TEST_CASE("enable_rc_from_this, rc_from_this", "[enable_rc_from_this]")
 {
-    auto first  = memory::rc_ptr<test>(new test{});
+    auto first  = memory::rc_ptr<test>(new test());
     auto second = first->rc_from_this();
     REQUIRE(first.use_count() == 2);
     REQUIRE(second.use_count() == 2);
@@ -23,7 +23,7 @@ TEST_CASE("enable_rc_from_this, rc_from_this", "[enable_rc_from_this]")
 
 TEST_CASE("enable_rc_from_this, weak_rc_from_this", "[enable_rc_from_this]")
 {
-    auto first  = memory::rc_ptr<test>(new test{});
+    auto first  = memory::rc_ptr<test>(new test());
     auto second = first->weak_rc_from_this();
     REQUIRE(first.use_count() == 1);
     REQUIRE(!second.expired());
