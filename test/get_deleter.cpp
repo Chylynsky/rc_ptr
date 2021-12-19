@@ -12,16 +12,16 @@
 TEST_CASE("rc_ptr, get default deleter", "[get_deleter]")
 {
     memory::rc_ptr<int> ptr{ new int{ 0 } };
-    auto deleter = ptr.get_deleter();
-    auto raw     = new int{ 0 };
+    auto                deleter = ptr.get_deleter();
+    auto                raw     = new int{ 0 };
     deleter(raw);
 }
 
 TEST_CASE("rc_ptr, get default deleter for array", "[get_deleter]")
 {
     memory::rc_ptr<int[]> ptr{ new int[256] };
-    auto deleter = ptr.get_deleter();
-    auto raw     = new int[256];
+    auto                  deleter = ptr.get_deleter();
+    auto                  raw     = new int[256];
     deleter(raw);
 }
 

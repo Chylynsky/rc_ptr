@@ -24,7 +24,7 @@ TEST_CASE("rc_ptr, swap two nullptrs", "[swap]")
 
 TEST_CASE("rc_ptr, swap nullptr and pointer", "[swap]")
 {
-    auto raw = new int{ 0 };
+    auto                raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
     memory::rc_ptr<int> second{ nullptr };
     first.swap(second);
@@ -38,7 +38,7 @@ TEST_CASE("rc_ptr, swap nullptr and pointer", "[swap]")
 
 TEST_CASE("rc_ptr, double swap - nullptr and pointer", "[swap]")
 {
-    auto raw = new int{ 0 };
+    auto                raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
     memory::rc_ptr<int> second{ nullptr };
     first.swap(second);
@@ -53,8 +53,8 @@ TEST_CASE("rc_ptr, double swap - nullptr and pointer", "[swap]")
 
 TEST_CASE("rc_ptr, swap valid pointers", "[swap]")
 {
-    auto raw_first  = new int{ 0 };
-    auto raw_second = new int{ 6 };
+    auto                raw_first  = new int{ 0 };
+    auto                raw_second = new int{ 6 };
     memory::rc_ptr<int> first{ raw_first };
     memory::rc_ptr<int> second{ raw_second };
     first.swap(second);
@@ -68,8 +68,8 @@ TEST_CASE("rc_ptr, swap valid pointers", "[swap]")
 
 TEST_CASE("rc_ptr, double swap - valid pointers", "[swap]")
 {
-    auto raw_first  = new int{ 0 };
-    auto raw_second = new int{ 6 };
+    auto                raw_first  = new int{ 0 };
+    auto                raw_second = new int{ 6 };
     memory::rc_ptr<int> first{ raw_first };
     memory::rc_ptr<int> second{ raw_second };
     first.swap(second);
@@ -93,9 +93,10 @@ TEST_CASE("weak_rc_ptr, swap two default constructed", "[swap]")
     REQUIRE(second.use_count() == 0);
 }
 
-TEST_CASE("weak_rc_ptr, swap default constructed and rc_ptr constructed", "[swap]")
+TEST_CASE("weak_rc_ptr, swap default constructed and rc_ptr constructed",
+          "[swap]")
 {
-    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::rc_ptr<int>      first{ new int{ 0 } };
     memory::weak_rc_ptr<int> second{ first };
     memory::weak_rc_ptr<int> third;
     second.swap(third);
@@ -105,10 +106,11 @@ TEST_CASE("weak_rc_ptr, swap default constructed and rc_ptr constructed", "[swap
     REQUIRE(third.use_count() == 1);
 }
 
-TEST_CASE("weak_rc_ptr, swap two constructed from valid rc_ptr objects", "[swap]")
+TEST_CASE("weak_rc_ptr, swap two constructed from valid rc_ptr objects",
+          "[swap]")
 {
-    memory::rc_ptr<int> first{ new int{ 0 } };
-    memory::rc_ptr<int> second{ new int{ 6 } };
+    memory::rc_ptr<int>      first{ new int{ 0 } };
+    memory::rc_ptr<int>      second{ new int{ 6 } };
     memory::weak_rc_ptr<int> weak_first{ first };
     memory::weak_rc_ptr<int> weak_second{ second };
     weak_first.swap(weak_second);

@@ -34,14 +34,14 @@ TEST_CASE("rc_ptr, get after nullptr construction with deleter", "[get]")
 
 TEST_CASE("rc_ptr, get after pointer construction", "[get]")
 {
-    auto raw = new int{ 0 };
+    auto                raw = new int{ 0 };
     memory::rc_ptr<int> ptr{ raw };
     REQUIRE(ptr.get() == raw);
 }
 
 TEST_CASE("rc_ptr, get after pointer construction with deleter", "[get]")
 {
-    auto raw = new int{ 0 };
+    auto                                           raw = new int{ 0 };
     memory::rc_ptr<int, std::function<void(int*)>> ptr{
         raw,
         [](int* ptr) { delete ptr; },
@@ -51,7 +51,7 @@ TEST_CASE("rc_ptr, get after pointer construction with deleter", "[get]")
 
 TEST_CASE("rc_ptr, get after copy construction", "[get]")
 {
-    auto raw = new int{ 0 };
+    auto                raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
     memory::rc_ptr<int> second{ first };
     REQUIRE(first.get() == raw);
@@ -68,7 +68,7 @@ TEST_CASE("rc_ptr, get after copy construction when nullptr", "[get]")
 
 TEST_CASE("rc_ptr, get after move construction", "[get]")
 {
-    auto raw = new int{ 0 };
+    auto                raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
     memory::rc_ptr<int> second{ std::move(first) };
     REQUIRE(first.get() == nullptr);

@@ -15,16 +15,18 @@ TEST_CASE("weak_rc_ptr, expired when default constructed", "[expired]")
     REQUIRE(ptr.expired());
 }
 
-TEST_CASE("weak_rc_ptr, expired when constructed from invalid rc_ptr", "[expired]")
+TEST_CASE("weak_rc_ptr, expired when constructed from invalid rc_ptr",
+          "[expired]")
 {
-    memory::rc_ptr<int> first;
+    memory::rc_ptr<int>      first;
     memory::weak_rc_ptr<int> second{ first };
     REQUIRE(second.expired());
 }
 
-TEST_CASE("weak_rc_ptr, not expired when constructed from valid rc_ptr", "[expired]")
+TEST_CASE("weak_rc_ptr, not expired when constructed from valid rc_ptr",
+          "[expired]")
 {
-    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::rc_ptr<int>      first{ new int{ 0 } };
     memory::weak_rc_ptr<int> second{ first };
     REQUIRE(!second.expired());
 }

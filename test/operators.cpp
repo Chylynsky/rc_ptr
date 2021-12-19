@@ -25,14 +25,14 @@ TEST_CASE("rc_ptr, bool conversion when valid", "[operators]")
 
 TEST_CASE("rc_ptr, operator*", "[operators]")
 {
-    constexpr int value = 13;
+    constexpr int       value = 13;
     memory::rc_ptr<int> ptr{ new int{ value } };
     REQUIRE(*ptr == value);
 }
 
 TEST_CASE("rc_ptr, operator->", "[operators]")
 {
-    constexpr std::pair<int, int> value{ 26, 34 };
+    constexpr std::pair<int, int>       value{ 26, 34 };
     memory::rc_ptr<std::pair<int, int>> ptr{ new std::pair<int, int>{ value } };
     REQUIRE(ptr->first == value.first);
     REQUIRE(ptr->second == value.second);

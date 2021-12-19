@@ -22,7 +22,7 @@ TEST_CASE("rc_ptr, nullptr assignment", "[assignment]")
 
 TEST_CASE("rc_ptr, copy assignment", "[assignment]")
 {
-    auto raw = new int{ 0 };
+    auto                raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
     memory::rc_ptr<int> second;
     second = first;
@@ -49,7 +49,7 @@ TEST_CASE("rc_ptr, copy assignment when nullptr", "[assignment]")
 
 TEST_CASE("rc_ptr, move assignment", "[assignment]")
 {
-    auto raw = new int{ 0 };
+    auto                raw = new int{ 0 };
     memory::rc_ptr<int> first{ raw };
     memory::rc_ptr<int> second;
     second = std::move(first);
@@ -88,7 +88,7 @@ TEST_CASE("rc_ptr, nullptr assignment with deleter", "[assignment]")
 
 TEST_CASE("rc_ptr, pointer assignment with deleter", "[assignment]")
 {
-    auto raw = new int{ 0 };
+    auto                                           raw = new int{ 0 };
     memory::rc_ptr<int, std::function<void(int*)>> ptr;
     ptr = memory::rc_ptr<int, std::function<void(int*)>>{
         raw,
@@ -101,10 +101,10 @@ TEST_CASE("rc_ptr, pointer assignment with deleter", "[assignment]")
 
 TEST_CASE("rc_ptr, assignment of weak_rc_ptr when valid", "[assignment]")
 {
-    auto raw = new int{ 0 };
-    memory::rc_ptr<int> first{ raw };
+    auto                     raw = new int{ 0 };
+    memory::rc_ptr<int>      first{ raw };
     memory::weak_rc_ptr<int> second{ first };
-    memory::rc_ptr<int> third;
+    memory::rc_ptr<int>      third;
     third = second;
     REQUIRE(first.get() == raw);
     REQUIRE(first.use_count() == 2);
@@ -118,13 +118,15 @@ TEST_CASE("rc_ptr, assignment of weak_rc_ptr when valid", "[assignment]")
 
 TEST_CASE("rc_ptr, assignment of weak_rc_ptr when invalid", "[assignment]")
 {
-    memory::rc_ptr<int> first{ nullptr };
+    memory::rc_ptr<int>      first{ nullptr };
     memory::weak_rc_ptr<int> second{ first };
-    memory::rc_ptr<int> third;
-    REQUIRE_THROWS_AS(std::invoke([&]() { third = second; }), memory::bad_weak_rc_ptr);
+    memory::rc_ptr<int>      third;
+    REQUIRE_THROWS_AS(std::invoke([&]() { third = second; }),
+                      memory::bad_weak_rc_ptr);
 }
 
-TEST_CASE("weak_rc_ptr, copy assignment when default constructed", "[assignment]")
+TEST_CASE("weak_rc_ptr, copy assignment when default constructed",
+          "[assignment]")
 {
     memory::weak_rc_ptr<int> first;
     memory::weak_rc_ptr<int> second;
@@ -137,7 +139,7 @@ TEST_CASE("weak_rc_ptr, copy assignment when default constructed", "[assignment]
 
 TEST_CASE("weak_rc_ptr, copy assignment when valid", "[assignment]")
 {
-    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::rc_ptr<int>      first{ new int{ 0 } };
     memory::weak_rc_ptr<int> second{ first };
     memory::weak_rc_ptr<int> third;
     third = second;
@@ -149,7 +151,7 @@ TEST_CASE("weak_rc_ptr, copy assignment when valid", "[assignment]")
 
 TEST_CASE("weak_rc_ptr, move assignment when valid", "[assignment]")
 {
-    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::rc_ptr<int>      first{ new int{ 0 } };
     memory::weak_rc_ptr<int> second{ first };
     memory::weak_rc_ptr<int> third;
     third = std::move(second);
@@ -161,7 +163,7 @@ TEST_CASE("weak_rc_ptr, move assignment when valid", "[assignment]")
 
 TEST_CASE("weak_rc_ptr, assignment of valid rc_ptr", "[assignment]")
 {
-    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::rc_ptr<int>      first{ new int{ 0 } };
     memory::weak_rc_ptr<int> second;
     second = first;
     REQUIRE(!second.expired());
@@ -170,7 +172,7 @@ TEST_CASE("weak_rc_ptr, assignment of valid rc_ptr", "[assignment]")
 
 TEST_CASE("weak_rc_ptr, assignment of invalid rc_ptr", "[assignment]")
 {
-    memory::rc_ptr<int> first{ nullptr };
+    memory::rc_ptr<int>      first{ nullptr };
     memory::weak_rc_ptr<int> second;
     second = first;
     REQUIRE(second.expired());

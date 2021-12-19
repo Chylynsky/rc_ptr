@@ -30,9 +30,6 @@ namespace RC_PTR_NAMESPACE
 {
 namespace detail
 {
-template<bool Cond>
-using Requires = std::enable_if_t<Cond, int>;
-
 template<typename T, typename Deleter, typename Alloc>
 class control_block
 {
@@ -135,26 +132,32 @@ template<typename T>
 class enable_rc_from_this;
 
 /**
- * @brief rc_ptr is a smart pointer that manages shared ownership of a
- * pointer on a single thread. Multiple rc_ptr objects can own the same
- * object. Reference cycles are possible and may be broken by using
- * weak_rc_ptr. Owned object is deallocated when the last remaining
- * rc_ptr object is destroyed, reset or assigned to another rc_ptr,
- * owning other object.
+ * @brief rc_ptr class template manages shared ownership of an object of
+ * type T via the pointer. Multiple rc_ptr objects can manage the
+ * single object. The managed object is deleted when the last remaining
+ * rc_ptr object is either destroyed or reset.
  *
- * Custom deleter may be supplied. By default, the object is deallocated
- * using delete expression when T is a non-array type and delete[] when
- * T is an array type.
+ * rc_ptr meets CopyConstructible, CopyAssignable, MoveConstructible and
+ * MoveAssignable requirements.
  *
- * Using member functions of rc_ptr is
- * not thread-safe due to lack of synchronization in memory access.
+ * rc_ptr keeps track of the reference count by allocating the control block
+ * internally. By default, it is allocated and deallocated using the
+ * std::allocator<T>. The control block is deallocated w1hen the count of both
+ * rc_ptr and weak_rc_ptr objects managing a single object reaches zero.
  *
- * Copy and move assignments are also not thread-safe because reference
- * counting and memory allocation is not synchronized.
+ * Custom deleters may be used to customize the objects
+ * destruction.
  *
- * @tparam T Type of the object being managed.
- * @tparam Deleter Type of a deleter. By default, delete is used with
- * non-array types and delete[] with array types.
+ * Custom allocator may be provided for internal use to allocate
+ * and later deallocate the control block.
+ *
+ * The class methods are not thread safe.
+ *
+ * @tparam T Type of the managed object
+ * @tparam Deleter Type of the deleter for the destruction of the managed
+ * object. Default is std::default_delete<T>.
+ * @tparam Alloc Type of the allocator used for allocation and deallocation of
+ * the internal control block. Default is std::allocator<T>.
  */
 template<typename T, typename Deleter = std::default_delete<T>,
          typename Alloc = std::allocator<T>>
@@ -187,15 +190,16 @@ public:
     }
 
     /**
-     * @brief Construct rc_ptr object from the pointer ptr. Custom deleter
+     * @brief Constructs rc_ptr object from the pointer ptr. Custom deleter
      * and/or custom allocator may be provided.
      *
      * @tparam D Deleter type.
      * @tparam A Allocator type.
      * @param ptr Pointer to be managed by the rc_ptr.
      * @param deleter Deleter, called when the last remaining rc_ptr
-     * managing ptr is destroyed. Cannot throw.
-     * @param allocator Allocator to be used for internal allocations.
+     * managing ptr is destroyed. Cannot throw exceptions.
+     * @param allocator Allocator to be used for internal control block
+     * allocations.
      */
     template<typename D = deleter_type, typename A = allocator_type>
     rc_ptr(pointer ptr, D&& deleter = D{}, A&& allocator = A{}) :
@@ -226,10 +230,42 @@ public:
 
         m_control_block->increase_ref_count();
 
+        // Additional step for classes deriving from enable_rc_from_this.
         if constexpr (std::is_base_of_v<enable_rc_from_this<T>, T>)
         {
             ptr->m_weak = weak_rc_ptr<T>(*this);
         }
+    }
+
+    template<typename D = deleter_type, typename A = allocator_type>
+    rc_ptr(std::unique_ptr<T, D>&& ptr, A&& allocator = A{}) :
+        m_ptr{ ptr.get() },
+        m_control_block{ nullptr }
+    {
+        if (!m_ptr)
+        {
+            return;
+        }
+
+        {
+            auto control_block_allocator =
+                control_block_allocator_type{ allocator };
+            auto mem = control_block_allocator_traits_type::allocate(
+                control_block_allocator,
+                1);
+
+            assert(mem);
+            control_block_allocator_traits_type::construct(
+                control_block_allocator,
+                mem,
+                std::forward<D>(ptr.get_deleter()),
+                std::forward<A>(allocator));
+
+            m_control_block = mem;
+        }
+
+        m_control_block->increase_ref_count();
+        ptr.release(); // Now rc_ptr owns the resource
     }
 
     /**
@@ -267,6 +303,11 @@ public:
         m_ptr{ pointer() },
         m_control_block{ nullptr }
     {
+        if (other.expired())
+        {
+            throw bad_weak_rc_ptr("rc_ptr expired.");
+        }
+
         *this = other.lock();
     }
 
@@ -319,6 +360,11 @@ public:
      */
     rc_ptr& operator=(const weak_rc_ptr<T, deleter_type, allocator_type>& other)
     {
+        if (other.expired())
+        {
+            throw bad_weak_rc_ptr("rc_ptr expired.");
+        }
+
         *this = other.lock();
         return *this;
     }
@@ -461,6 +507,18 @@ public:
         std::swap(m_ptr, other.m_ptr);
     }
 
+    template<typename U, typename D, typename A>
+    bool owner_before(const rc_ptr<U, D, A>& other) const noexcept
+    {
+        return other.m_control_block < m_control_block;
+    }
+
+    template<typename U, typename D, typename A>
+    bool owner_before(const weak_rc_ptr<U, D, A>& other) const noexcept
+    {
+        return other.m_control_block < m_control_block;
+    }
+
     /**
      * @brief Implicit conversion to bool. Compares the stored pointer to
      * nullptr.
@@ -495,6 +553,17 @@ public:
     {
         assert(get());
         return get();
+    }
+
+    /**
+     * @brief Provides index based access to the stored array.
+     *
+     * @param index
+     * @return element_type&
+     */
+    element_type& operator[](const std::ptrdiff_t index) const
+    {
+        return get()[index];
     }
 
 private:
@@ -734,24 +803,16 @@ public:
     }
 
     /**
-     * @brief Creates a new rc_ptr object if expired() == false.
+     * @brief
      *
-     * @return rc_ptr<T, deleter_type>
-     * @throws bad_weak_rc_ptr when calling on an expired weak_rc_ptr.
+     * @return rc_ptr<T, deleter_type, allocator_type>
      */
-    rc_ptr<T, deleter_type, allocator_type> lock() const
+    rc_ptr<T, deleter_type, allocator_type> lock() const noexcept
     {
-        if (expired())
-        {
-            throw bad_weak_rc_ptr("rc_ptr expired.");
-        }
-
-        assert(m_ptr);
-        assert(m_control_block);
-        return rc_ptr<T, deleter_type, allocator_type>{
-            m_ptr,
-            m_control_block,
-        };
+        return expired() ?
+                   rc_ptr<T, deleter_type, allocator_type>{} :
+                   rc_ptr<T, deleter_type, allocator_type>{ m_ptr,
+                                                            m_control_block };
     }
 
     /**
@@ -796,16 +857,12 @@ template<typename T>
 class enable_rc_from_this
 {
 protected:
-    constexpr enable_rc_from_this() = default;
-
+    constexpr enable_rc_from_this()                 = default;
     enable_rc_from_this(const enable_rc_from_this&) = default;
-
-    enable_rc_from_this(enable_rc_from_this&&) = default;
-
-    ~enable_rc_from_this() = default;
+    enable_rc_from_this(enable_rc_from_this&&)      = default;
+    ~enable_rc_from_this()                          = default;
 
     enable_rc_from_this& operator=(const enable_rc_from_this&) = default;
-
     enable_rc_from_this& operator=(enable_rc_from_this&&) = default;
 
 public:
@@ -855,11 +912,86 @@ private:
     mutable weak_rc_ptr<T> m_weak;
 };
 
+/**
+ * @brief
+ *
+ * @tparam T
+ * @tparam ArgsT
+ * @param args
+ * @return rc_ptr<T>
+ */
 template<typename T, typename... ArgsT>
 rc_ptr<T> make_rc(ArgsT&&... args)
 {
     return rc_ptr<T>{ new T{ std::forward<ArgsT>(args)... } };
 }
+
+/**
+ * @brief
+ *
+ * @tparam T
+ * @tparam Deleter
+ * @tparam Alloc
+ */
+template<typename T = void, typename Deleter = std::default_delete<T>,
+         typename Alloc = std::allocator<T>>
+struct owner_less;
+
+/**
+ * @brief
+ *
+ * @tparam T
+ * @tparam Deleter
+ * @tparam Alloc
+ */
+template<typename T, typename Deleter, typename Alloc>
+struct owner_less<rc_ptr<T, Deleter, Alloc>> {
+    bool operator()(const rc_ptr<T, Deleter, Alloc>&      lhs,
+                    const weak_rc_ptr<T, Deleter, Alloc>& rhs)
+    {
+        return lhs.owner_before(rhs);
+    };
+
+    bool operator()(const weak_rc_ptr<T, Deleter, Alloc>& lhs,
+                    const rc_ptr<T, Deleter, Alloc>&      rhs)
+    {
+        return lhs.owner_before(rhs);
+    };
+
+    bool operator()(const rc_ptr<T, Deleter, Alloc>& lhs,
+                    const rc_ptr<T, Deleter, Alloc>& rhs)
+    {
+        return lhs.owner_before(rhs);
+    };
+};
+
+/**
+ * @brief
+ *
+ * @tparam T
+ * @tparam Deleter
+ * @tparam Alloc
+ */
+template<typename T, typename Deleter, typename Alloc>
+struct owner_less<weak_rc_ptr<T, Deleter, Alloc>> {
+    bool operator()(const rc_ptr<T, Deleter, Alloc>&      lhs,
+                    const weak_rc_ptr<T, Deleter, Alloc>& rhs)
+    {
+        return lhs.owner_before(rhs);
+    };
+
+    bool operator()(const weak_rc_ptr<T, Deleter, Alloc>& lhs,
+                    const rc_ptr<T, Deleter, Alloc>&      rhs)
+    {
+        return lhs.owner_before(rhs);
+    };
+
+    bool operator()(const weak_rc_ptr<T, Deleter, Alloc>& lhs,
+                    const weak_rc_ptr<T, Deleter, Alloc>& rhs)
+    {
+        return lhs.owner_before(rhs);
+    };
+};
 
 } // namespace RC_PTR_NAMESPACE
 

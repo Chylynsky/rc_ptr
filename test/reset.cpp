@@ -139,7 +139,7 @@ TEST_CASE("weak_rc_ptr, reset after default construction", "[reset]")
 
 TEST_CASE("weak_rc_ptr, reset when constructed from rc_ptr", "[reset]")
 {
-    memory::rc_ptr<int> first{ new int{ 0 } };
+    memory::rc_ptr<int>      first{ new int{ 0 } };
     memory::weak_rc_ptr<int> second{ first };
     second.reset();
     REQUIRE(second.use_count() == 0);
