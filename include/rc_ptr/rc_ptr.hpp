@@ -237,6 +237,14 @@ public:
         }
     }
 
+    /**
+     * @brief Construct a new rc ptr object
+     *
+     * @tparam D
+     * @tparam A
+     * @param ptr
+     * @param allocator
+     */
     template<typename D = deleter_type, typename A = allocator_type>
     rc_ptr(std::unique_ptr<T, D>&& ptr, A&& allocator = A{}) :
         m_ptr{ ptr.get() },
@@ -303,12 +311,7 @@ public:
         m_ptr{ pointer() },
         m_control_block{ nullptr }
     {
-        if (other.expired())
-        {
-            throw bad_weak_rc_ptr("rc_ptr expired.");
-        }
-
-        *this = other.lock();
+        *this = other;
     }
 
     /**
@@ -833,6 +836,38 @@ public:
     {
         std::swap(m_control_block, other.m_control_block);
         std::swap(m_ptr, other.m_ptr);
+    }
+
+    /**
+     * @brief
+     *
+     * @tparam U
+     * @tparam D
+     * @tparam A
+     * @param other
+     * @return true
+     * @return false
+     */
+    template<typename U, typename D, typename A>
+    bool owner_before(const rc_ptr<U, D, A>& other) const noexcept
+    {
+        return other.m_control_block < m_control_block;
+    }
+
+    /**
+     * @brief
+     *
+     * @tparam U
+     * @tparam D
+     * @tparam A
+     * @param other
+     * @return true
+     * @return false
+     */
+    template<typename U, typename D, typename A>
+    bool owner_before(const weak_rc_ptr<U, D, A>& other) const noexcept
+    {
+        return other.m_control_block < m_control_block;
     }
 
 private:
