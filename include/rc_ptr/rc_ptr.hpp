@@ -12,6 +12,7 @@
 #include <cassert>
 #include <cstdint>
 #include <memory>
+#include <ostream>
 #include <stdexcept>
 
 /**
@@ -584,6 +585,7 @@ public:
      */
     element_type& operator[](const std::ptrdiff_t index) const
     {
+        assert(get());
         return get()[index];
     }
 
@@ -611,6 +613,26 @@ private:
     pointer             m_ptr;
     control_block_type* m_control_block;
 };
+
+/**
+ * @brief Outputs the value of get() to the output stream.
+ *
+ * @tparam CharT
+ * @tparam Traits
+ * @tparam U
+ * @tparam D
+ * @tparam A
+ * @param os
+ * @param ptr
+ * @return std::basic_ostream<CharT, Traits>&
+ */
+template<typename CharT, typename Traits, typename U, typename D, typename A>
+std::basic_ostream<CharT, Traits>&
+    operator<<(std::basic_ostream<CharT, Traits>& os,
+               const rc_ptr<U, D, A>&             ptr)
+{
+    return os << ptr.get();
+}
 
 /**
  * @brief weak_rc_ptr is a smart pointer that represents a weak reference to the
