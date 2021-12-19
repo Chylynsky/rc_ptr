@@ -115,8 +115,7 @@ private:
 } // namespace detail
 
 /**
- * @brief Exception thrown when lock() method is called on expired
- * weak_rc_ptr.
+ * @brief Exception thrown when rc_ptr is created from expired weak_rc_ptr.
  *
  */
 struct bad_weak_rc_ptr : public std::runtime_error {
@@ -172,7 +171,7 @@ public:
     using weak_type      = weak_rc_ptr<T, deleter_type, allocator_type>;
 
     /**
-     * @brief Constructs rc_ptr that owns nothing.
+     * @brief Default constructor. Constructs rc_ptr that owns nothing.
      *
      */
     constexpr rc_ptr() noexcept : m_ptr{ pointer() }, m_control_block{ nullptr }
@@ -190,16 +189,15 @@ public:
     }
 
     /**
-     * @brief Constructs rc_ptr object from the pointer ptr. Custom deleter
-     * and/or custom allocator may be provided.
+     * @brief Constructs rc_ptr object from the pointer ptr. Takes ownership
+     * over the pointer. Custom deleter and/or custom allocator may be
+     * provided.
      *
-     * @tparam D Deleter type.
-     * @tparam A Allocator type.
-     * @param ptr Pointer to be managed by the rc_ptr.
-     * @param deleter Deleter, called when the last remaining rc_ptr
-     * managing ptr is destroyed. Cannot throw exceptions.
-     * @param allocator Allocator to be used for internal control block
-     * allocations.
+     * @tparam D
+     * @tparam A
+     * @param ptr
+     * @param deleter
+     * @param allocator
      */
     template<typename D = deleter_type, typename A = allocator_type>
     rc_ptr(pointer ptr, D&& deleter = D{}, A&& allocator = A{}) :
@@ -238,7 +236,8 @@ public:
     }
 
     /**
-     * @brief Construct a new rc ptr object
+     * @brief Constructs the rc_ptr from the std::unique_ptr. Stored object and
+     * the deleter is transfered to the newly created rc_ptr object.
      *
      * @tparam D
      * @tparam A
@@ -277,8 +276,7 @@ public:
     }
 
     /**
-     * @brief Copy constructor. other must own a valid pointer. Increases
-     * reference count by one.
+     * @brief Copy constructor.
      *
      * @param other
      */
@@ -290,7 +288,7 @@ public:
     }
 
     /**
-     * @brief Move constructor. Does not increase a reference count.
+     * @brief Move constructor.
      *
      * @param other
      */
@@ -315,28 +313,27 @@ public:
     }
 
     /**
-     * @brief Copy assignment operator. other must own a valid pointer.
-     * Increases reference count by one.
+     * @brief Copy assignment operator.
      *
      * @param other
      * @return rc_ptr&
      */
     rc_ptr& operator=(const rc_ptr& other) noexcept
     {
-        if (!other.m_ptr)
+        m_control_block = other.m_control_block;
+        m_ptr           = other.get();
+
+        if (!m_control_block)
         {
             return *this;
         }
 
-        assert(other.m_control_block && other.use_count() != 0);
-        m_control_block = other.m_control_block;
-        m_ptr           = other.get();
         m_control_block->increase_ref_count();
         return *this;
     }
 
     /**
-     * @brief Move assignment operator. Does not increase a reference count.
+     * @brief Move assignment operator.
      *
      * @param other
      * @return rc_ptr&
@@ -373,9 +370,9 @@ public:
     }
 
     /**
-     * @brief Destroys rc_ptr object if reference count eaches zero.
-     * Control block is deallocated only if number of weak_rc_ptr objects
-     * referencing it also reaches zero.
+     * @brief Destroys rc_ptr object. The managed object is destroyed and the
+     * memory is deallocated when the last remaining rc_ptr managing the object
+     * is destroyed.
      *
      */
     ~rc_ptr()
@@ -436,34 +433,35 @@ public:
     }
 
     /**
-     * @brief Returns the deleter. Undefined behaviour when nullptr or
-     * use_count() == 0.
+     * @brief Returns a reference to the deleter.
      *
      * @return const deleter_type&
      */
     const deleter_type& get_deleter() const noexcept
     {
-        assert(get());
+        assert(m_control_block);
         return m_control_block->get_deleter();
     }
 
     /**
-     * @brief Returns the deleter.
+     * @brief Returns a reference to the deleter.
      *
      * @return deleter_type&
      */
     deleter_type& get_deleter() noexcept
     {
+        assert(m_control_block);
         return m_control_block->get_deleter();
     }
 
     /**
-     * @brief Returns the allocator.
+     * @brief Returns a copy of the allocator.
      *
      * @return deleter_type&
      */
-    allocator_type& get_allocator() noexcept
+    allocator_type get_allocator() noexcept
     {
+        assert(m_control_block);
         return m_control_block->get_allocator();
     }
 
@@ -491,7 +489,7 @@ public:
     }
 
     /**
-     * @brief Release ownerhip over managed object.
+     * @brief Releases the ownerhip of the managed object.
      *
      */
     void reset() noexcept
@@ -500,7 +498,7 @@ public:
     }
 
     /**
-     * @brief Swap contents with other rc_ptr object.
+     * @brief Swaps contents with other rc_ptr object.
      *
      * @param other
      */
@@ -510,12 +508,32 @@ public:
         std::swap(m_ptr, other.m_ptr);
     }
 
+    /**
+     * @brief Checks whether the current rc_ptr object precedes other.
+     *
+     * @tparam U
+     * @tparam D
+     * @tparam A
+     * @param other
+     * @return true
+     * @return false
+     */
     template<typename U, typename D, typename A>
     bool owner_before(const rc_ptr<U, D, A>& other) const noexcept
     {
         return other.m_control_block < m_control_block;
     }
 
+    /**
+     * @brief Checks whether the current rc_ptr object precedes other.
+     *
+     * @tparam U
+     * @tparam D
+     * @tparam A
+     * @param other
+     * @return true
+     * @return false
+     */
     template<typename U, typename D, typename A>
     bool owner_before(const weak_rc_ptr<U, D, A>& other) const noexcept
     {
@@ -595,26 +613,15 @@ private:
 };
 
 /**
- * @brief weak_rc_ptr is a smart pointer that represents a weak (non-owning)
- * reference to the resource.
+ * @brief weak_rc_ptr is a smart pointer that represents a weak reference to the
+ * resource.
  *
  * rc_ptr object can be constructed from weak_rc_ptr object by using the
- * lock() method. Locking on expired (use_count() == 0) weak_rc_ptr results
- * in bad_weak_rc_ptr exception being thrown.
- *
- * Custom deleter may be supplied when needed to
- * provide rc_ptr type compatibility. This class never deallocates the
- * managed object, thus the supplied deleter (either custom or default) is
- * never called by weak_rc_ptr objects.
- *
- * Using member functions of weak_rc_ptr is
- * not thread-safe due to lack of synchronization in memory access.
- *
- * Copy and move assignments are also not thread-safe because reference
- * counting and memory allocation is not synchronized.
+ * lock() method or by assignment.
  *
  * @tparam T
  * @tparam Deleter
+ * @tparam Alloc
  */
 template<typename T, typename Deleter, typename Alloc>
 class weak_rc_ptr
@@ -633,8 +640,7 @@ public:
     constexpr weak_rc_ptr() : m_ptr{ pointer() }, m_control_block{ nullptr } { }
 
     /**
-     * @brief Copy constructor. Constructs a copy of weak_rc_ptr. If other
-     * is valid, increases weak count.
+     * @brief Copy constructor.
      *
      * @param other
      */
@@ -646,8 +652,7 @@ public:
     }
 
     /**
-     * @brief Move constructor. Transfers control block ownership. Does not
-     * increase weak count.
+     * @brief Move constructor.
      *
      * @param other
      */
@@ -659,8 +664,7 @@ public:
     }
 
     /**
-     * @brief Constructs a weak_rc_ptr object out of rc_ptr. Increases weak
-     * count if other owns a pointer.
+     * @brief Constructs the weak_rc_ptr from the rc_ptr.
      *
      * @param other
      */
@@ -680,8 +684,7 @@ public:
     }
 
     /**
-     * @brief Destroys weak_rc_ptr. If weak count reaches zero destroys the
-     * control block.
+     * @brief Destroys weak_rc_ptr.
      *
      */
     ~weak_rc_ptr()
@@ -722,8 +725,7 @@ public:
     }
 
     /**
-     * @brief Copy assignment. Creates a copy of weak_rc_ptr. If other
-     * is valid, increases weak count.
+     * @brief Copy assignment operator.
      *
      * @param other
      * @return weak_rc_ptr&
@@ -743,7 +745,7 @@ public:
     }
 
     /**
-     * @brief Move assignment. Does not increase a weak count.
+     * @brief Move assignment operator.
      *
      * @param other
      * @return weak_rc_ptr&
@@ -763,28 +765,26 @@ public:
     }
 
     /**
-     * @brief Assigns rc_ptr to weak_rc_ptr. Inreases weak count when other
-     * is valid.
+     * @brief Assigns rc_ptr to weak_rc_ptr.
      *
      * @param other
      */
     weak_rc_ptr& operator=(const rc_ptr<T, deleter_type, allocator_type>& other)
     {
-        if (!other.m_control_block)
+        m_ptr           = other.m_ptr;
+        m_control_block = other.m_control_block;
+
+        if (!m_control_block)
         {
-            assert(!other.m_ptr);
             return *this;
         }
 
-        m_ptr           = other.m_ptr;
-        m_control_block = other.m_control_block;
         m_control_block->increase_weak_count();
         return *this;
     }
 
     /**
-     * @brief Checks if the managed object has expired. Managed object
-     * expires when its reference count reaches zero.
+     * @brief Checks if the managed object was deleted.
      *
      * @return true
      * @return false
@@ -792,6 +792,39 @@ public:
     bool expired() const noexcept
     {
         return (!m_control_block || m_control_block->get_ref_count() == 0);
+    }
+
+    /**
+     * @brief Returns a reference to the deleter.
+     *
+     * @return const deleter_type&
+     */
+    const deleter_type& get_deleter() const noexcept
+    {
+        assert(m_control_block);
+        return m_control_block->get_deleter();
+    }
+
+    /**
+     * @brief Returns a reference to the deleter.
+     *
+     * @return deleter_type&
+     */
+    deleter_type& get_deleter() noexcept
+    {
+        assert(m_control_block);
+        return m_control_block->get_deleter();
+    }
+
+    /**
+     * @brief Returns a copy of the allocator.
+     *
+     * @return deleter_type&
+     */
+    allocator_type get_allocator() noexcept
+    {
+        assert(m_control_block);
+        return m_control_block->get_allocator();
     }
 
     /**
@@ -806,7 +839,8 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Creates rc_ptr managing the stored object. If expired() == true,
+     * the default constructed rc_ptr is returned.
      *
      * @return rc_ptr<T, deleter_type, allocator_type>
      */
@@ -819,7 +853,7 @@ public:
     }
 
     /**
-     * @brief Release ownerhip over managed object.
+     * @brief Releases the ownerhip of the managed object.
      *
      */
     void reset() noexcept
@@ -828,7 +862,7 @@ public:
     }
 
     /**
-     * @brief Swap contents with other rc_ptr object.
+     * @brief Swaps contents with other weak_rc_ptr object.
      *
      * @param other
      */
@@ -839,7 +873,7 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Checks whether the current rc_ptr object precedes other.
      *
      * @tparam U
      * @tparam D
@@ -855,7 +889,7 @@ public:
     }
 
     /**
-     * @brief
+     * @brief Checks whether the current rc_ptr object precedes other.
      *
      * @tparam U
      * @tparam D
@@ -884,7 +918,8 @@ private:
 };
 
 /**
- * @brief Class enabling rc_ptr and weak_rc_ptr creation from this.
+ * @brief enable_rc_from_this class template allows to safely create rc_ptr and
+ * weak_rc_ptr object from this pointer.
  *
  * @tparam T
  */
@@ -902,7 +937,7 @@ protected:
 
 public:
     /**
-     * @brief Creates a new rc_ptr object from this.
+     * @brief Creates the rc_ptr object from this.
      *
      * @return rc_ptr<T>
      */
@@ -912,7 +947,7 @@ public:
     }
 
     /**
-     * @brief Creates a new rc_ptr object from this.
+     * @brief Creates the rc_ptr object from this.
      *
      * @return rc_ptr<const T>
      */
@@ -922,7 +957,7 @@ public:
     }
 
     /**
-     * @brief Creates a new weak_rc_ptr object from this.
+     * @brief Creates the weak_rc_ptr object from this.
      *
      * @return weak_rc_ptr<T>
      */
@@ -932,7 +967,7 @@ public:
     }
 
     /**
-     * @brief Creates a new weak_rc_ptr object from this.
+     * @brief Creates the weak_rc_ptr object from this.
      *
      * @return weak_rc_ptr<const T>
      */
@@ -948,7 +983,8 @@ private:
 };
 
 /**
- * @brief
+ * @brief Creates the rc_ptr instance, forwarding the arguments to the
+ * constructor of type T.
  *
  * @tparam T
  * @tparam ArgsT
@@ -962,7 +998,8 @@ rc_ptr<T> make_rc(ArgsT&&... args)
 }
 
 /**
- * @brief
+ * @brief owner_less is a function object that enables rc_ptr and weak_rc_ptr
+ * owner based ordering.
  *
  * @tparam T
  * @tparam Deleter
