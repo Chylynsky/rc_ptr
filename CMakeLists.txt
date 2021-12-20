@@ -14,7 +14,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(TARGET rc_ptr)
 
-option(RC_PTR_BUILD_TESTS "Build tests for rc_ptr." ON)
+option(RC_PTR_BUILD_TESTS "Build tests for rc_ptr." OFF)
 option(RC_PTR_BUILD_BENCHMARK "Build benchmarks for rc_ptr." OFF)
 
 add_library(${TARGET} INTERFACE)
