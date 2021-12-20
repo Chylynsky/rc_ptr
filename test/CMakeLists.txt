@@ -40,7 +40,8 @@ set(TEST_SRCS
     "enable_rc_from_this.cpp"
     "make_rc.cpp"
     "allocator.cpp"
-    "array_access.cpp")
+    "array_access.cpp"
+    "owner_before.cpp")
 
 add_executable(${TARGET} ${TEST_SRCS})
 

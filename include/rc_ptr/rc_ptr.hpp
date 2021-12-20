@@ -1027,19 +1027,19 @@ struct owner_less;
 template<typename T, typename Deleter, typename Alloc>
 struct owner_less<rc_ptr<T, Deleter, Alloc>> {
     bool operator()(const rc_ptr<T, Deleter, Alloc>&      lhs,
-                    const weak_rc_ptr<T, Deleter, Alloc>& rhs)
+                    const weak_rc_ptr<T, Deleter, Alloc>& rhs) const noexcept
     {
         return lhs.owner_before(rhs);
     };
 
     bool operator()(const weak_rc_ptr<T, Deleter, Alloc>& lhs,
-                    const rc_ptr<T, Deleter, Alloc>&      rhs)
+                    const rc_ptr<T, Deleter, Alloc>&      rhs) const noexcept
     {
         return lhs.owner_before(rhs);
     };
 
     bool operator()(const rc_ptr<T, Deleter, Alloc>& lhs,
-                    const rc_ptr<T, Deleter, Alloc>& rhs)
+                    const rc_ptr<T, Deleter, Alloc>& rhs) const noexcept
     {
         return lhs.owner_before(rhs);
     };
@@ -1055,19 +1055,19 @@ struct owner_less<rc_ptr<T, Deleter, Alloc>> {
 template<typename T, typename Deleter, typename Alloc>
 struct owner_less<weak_rc_ptr<T, Deleter, Alloc>> {
     bool operator()(const rc_ptr<T, Deleter, Alloc>&      lhs,
-                    const weak_rc_ptr<T, Deleter, Alloc>& rhs)
+                    const weak_rc_ptr<T, Deleter, Alloc>& rhs) const noexcept
     {
         return lhs.owner_before(rhs);
     };
 
     bool operator()(const weak_rc_ptr<T, Deleter, Alloc>& lhs,
-                    const rc_ptr<T, Deleter, Alloc>&      rhs)
+                    const rc_ptr<T, Deleter, Alloc>&      rhs) const noexcept
     {
         return lhs.owner_before(rhs);
     };
 
     bool operator()(const weak_rc_ptr<T, Deleter, Alloc>& lhs,
-                    const weak_rc_ptr<T, Deleter, Alloc>& rhs)
+                    const weak_rc_ptr<T, Deleter, Alloc>& rhs) const noexcept
     {
         return lhs.owner_before(rhs);
     };
