@@ -35,44 +35,25 @@ template<typename T, typename Deleter, typename Alloc>
 class control_block
 {
 public:
-    using size_type      = std::size_t;
-    using deleter_type   = Deleter;
-    using allocator_type = Alloc;
-
-    control_block() :
-        m_ref_count{ 0 },
-        m_weak_count{ 0 },
-        m_deleter{},
-        m_allocator{}
-    {
-    }
-
-    template<typename D>
-    control_block(D deleter) :
-        m_ref_count{ 0 },
-        m_weak_count{ 0 },
-        m_deleter{ std::forward<D>(deleter) },
-        m_allocator{}
-    {
-    }
+    control_block() = delete;
 
     template<typename D, typename A>
-    control_block(D&& deleter, A&& allocator) :
+    control_block(D&& deleter, A allocator) :
         m_ref_count{ 0 },
         m_weak_count{ 0 },
         m_deleter{ std::forward<D>(deleter) },
-        m_allocator{ std::forward<A>(allocator) }
+        m_allocator{ allocator }
     {
     }
 
     ~control_block() = default;
 
-    size_type get_ref_count() const noexcept
+    std::size_t get_ref_count() const noexcept
     {
         return m_ref_count;
     }
 
-    size_type get_weak_count() const noexcept
+    std::size_t get_weak_count() const noexcept
     {
         return m_weak_count;
     }
@@ -97,21 +78,26 @@ public:
         --m_weak_count;
     }
 
-    deleter_type& get_deleter() noexcept
+    Deleter& get_deleter() noexcept
     {
         return m_deleter;
     }
 
-    allocator_type get_allocator() noexcept
+    const Deleter& get_deleter() const noexcept
+    {
+        return m_deleter;
+    }
+
+    Alloc get_allocator() noexcept
     {
         return m_allocator;
     }
 
 private:
-    size_type      m_ref_count;
-    size_type      m_weak_count;
-    deleter_type   m_deleter;
-    allocator_type m_allocator;
+    std::size_t m_ref_count;
+    std::size_t m_weak_count;
+    Deleter     m_deleter;
+    Alloc       m_allocator;
 };
 } // namespace detail
 
@@ -201,7 +187,7 @@ public:
      * @param allocator
      */
     template<typename D = deleter_type, typename A = allocator_type>
-    rc_ptr(pointer ptr, D&& deleter = D{}, A&& allocator = A{}) :
+    rc_ptr(pointer ptr, D&& deleter = D{}, A allocator = A{}) :
         m_ptr{ ptr },
         m_control_block{ nullptr }
     {
@@ -222,7 +208,7 @@ public:
                 control_block_allocator,
                 mem,
                 std::forward<D>(deleter),
-                std::forward<A>(allocator));
+                control_block_allocator);
 
             m_control_block = mem;
         }
@@ -246,7 +232,7 @@ public:
      * @param allocator
      */
     template<typename D = deleter_type, typename A = allocator_type>
-    rc_ptr(std::unique_ptr<T, D>&& ptr, A&& allocator = A{}) :
+    rc_ptr(std::unique_ptr<T, D>&& ptr, A allocator = A{}) :
         m_ptr{ ptr.get() },
         m_control_block{ nullptr }
     {
@@ -267,7 +253,7 @@ public:
                 control_block_allocator,
                 mem,
                 std::forward<D>(ptr.get_deleter()),
-                std::forward<A>(allocator));
+                control_block_allocator);
 
             m_control_block = mem;
         }
